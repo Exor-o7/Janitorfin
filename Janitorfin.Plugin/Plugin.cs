@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using Janitorfin.Plugin.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
@@ -30,13 +29,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             new PluginPageInfo
             {
                 Name = Name,
-                EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.configPage.html", GetType().Namespace)
-            },
-            new PluginPageInfo
-            {
-                Name = "Janitorfin_Preview",
-                DisplayName = "Preview",
-                EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.previewPage.html", GetType().Namespace)
+                EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
             }
         ];
     }
