@@ -1,0 +1,17 @@
+bin/
+obj/
+.vs/
+artifacts/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code local state
+.vscode/*.log
+
+# OS-generated files
+Thumbs.db
+.DS_Store

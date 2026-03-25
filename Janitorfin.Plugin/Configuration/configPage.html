@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Janitorfin</title>
+</head>
+<body>
+    <div id="JanitorfinConfigPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs" data-require="emby-input,emby-button,emby-checkbox,emby-select">
+        <div data-role="content">
+            <div class="content-primary">
+                <div id="navigationTabs" data-role="controlgroup" data-type="horizontal" class="localnav"></div>
+
+                <form id="JanitorfinConfigForm">
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Cleanup Rules</h2></legend>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="DeleteAfterWatchDays">Delete watched media after days</label>
+                            <input id="DeleteAfterWatchDays" name="DeleteAfterWatchDays" type="number" is="emby-input" min="-1" />
+                            <div class="fieldDescription">Set to -1 to disable watched-item cleanup.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="DeleteNeverWatchedAfterDays">Delete never-watched media after days</label>
+                            <input id="DeleteNeverWatchedAfterDays" name="DeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-1" />
+                            <div class="fieldDescription">Set to -1 to disable never-watched cleanup.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="ProtectedTag">Protected tag</label>
+                            <input id="ProtectedTag" name="ProtectedTag" type="text" is="emby-input" />
+                            <div class="fieldDescription">Media with this Jellyfin tag will be skipped by cleanup.</div>
+                        </div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="DryRun" name="DryRun" type="checkbox" is="emby-checkbox" />
+                                <span>Dry run mode</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">Log intended actions without deleting media or changing Radarr or Sonarr monitoring.</div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Per-Type Overrides</h2></legend>
+
+                        <div class="fieldDescription" style="margin-bottom: 1em;">Use -2 to inherit the global defaults above. Use -1 to disable a specific rule for that media type.</div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MovieRulesDeleteAfterWatchDays">Movies: watched days</label>
+                            <input id="MovieRulesDeleteAfterWatchDays" type="number" is="emby-input" min="-2" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MovieRulesDeleteNeverWatchedAfterDays">Movies: never-watched days</label>
+                            <input id="MovieRulesDeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-2" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteAfterWatchDays">Episodes: watched days</label>
+                            <input id="EpisodeRulesDeleteAfterWatchDays" type="number" is="emby-input" min="-2" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteNeverWatchedAfterDays">Episodes: never-watched days</label>
+                            <input id="EpisodeRulesDeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-2" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="VideoRulesDeleteAfterWatchDays">Videos: watched days</label>
+                            <input id="VideoRulesDeleteAfterWatchDays" type="number" is="emby-input" min="-2" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="VideoRulesDeleteNeverWatchedAfterDays">Videos: never-watched days</label>
+                            <input id="VideoRulesDeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-2" />
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Library Rules</h2></legend>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="LibraryRulesJson">Library rule JSON</label>
+                            <textarea id="LibraryRulesJson" rows="18" style="width: 100%; min-height: 20rem; resize: vertical;"></textarea>
+                            <div class="fieldDescription">Provide a JSON array. Each rule may use LibraryName or LibraryPathPrefix, plus DefaultRules, MovieRules, EpisodeRules, and VideoRules. Each rules object supports DeleteAfterWatchDays and DeleteNeverWatchedAfterDays, where -2 inherits and -1 disables.</div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Radarr</h2></legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableRadarrIntegration" name="EnableRadarrIntegration" type="checkbox" is="emby-checkbox" />
+                                <span>Enable Radarr integration</span>
+                            </label>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="RadarrServerUrl">Server URL</label>
+                            <input id="RadarrServerUrl" name="RadarrServerUrl" type="text" is="emby-input" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="RadarrApiKey">API key</label>
+                            <input id="RadarrApiKey" name="RadarrApiKey" type="password" is="emby-input" />
+                        </div>
+
+                        <div>
+                            <button id="TestRadarrConnection" is="emby-button" type="button" class="raised emby-button">
+                                <span>Test Radarr Connection</span>
+                            </button>
+                        </div>
+                        <div id="RadarrTestResult" class="fieldDescription" style="margin-top: 0.75em;"></div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="UnmonitorRadarrOnDelete" name="UnmonitorRadarrOnDelete" type="checkbox" is="emby-checkbox" />
+                                <span>Unmonitor movie after delete</span>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Sonarr</h2></legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableSonarrIntegration" name="EnableSonarrIntegration" type="checkbox" is="emby-checkbox" />
+                                <span>Enable Sonarr integration</span>
+                            </label>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="SonarrServerUrl">Server URL</label>
+                            <input id="SonarrServerUrl" name="SonarrServerUrl" type="text" is="emby-input" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="SonarrApiKey">API key</label>
+                            <input id="SonarrApiKey" name="SonarrApiKey" type="password" is="emby-input" />
+                        </div>
+
+                        <div>
+                            <button id="TestSonarrConnection" is="emby-button" type="button" class="raised emby-button">
+                                <span>Test Sonarr Connection</span>
+                            </button>
+                        </div>
+                        <div id="SonarrTestResult" class="fieldDescription" style="margin-top: 0.75em;"></div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="UnmonitorSonarrOnDelete" name="UnmonitorSonarrOnDelete" type="checkbox" is="emby-checkbox" />
+                                <span>Unmonitor series or episodes after delete</span>
+                            </label>
+                        </div>
+
+                        <div class="selectContainer">
+                            <label class="selectLabel" for="SonarrUnmonitorScope">Sonarr unmonitor scope</label>
+                            <select id="SonarrUnmonitorScope" is="emby-select">
+                                <option value="0">Episode</option>
+                                <option value="1">Season</option>
+                                <option value="2">Series</option>
+                            </select>
+                            <div class="fieldDescription">Episode is the safest default. Season and Series broaden the change to avoid reacquisition for larger groups.</div>
+                        </div>
+                    </fieldset>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 1em;">
+                        <button id="OpenPreviewPage" is="emby-button" type="button" class="raised emby-button">
+                            <span>Open Dry Run Preview</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            var JanitorfinConfig = {
+                pluginUniqueId: '8eab83a3-4377-4036-8b37-68bc4767bc9e'
+            };
+
+            function getConfigurationPageUrl(name) {
+                return 'configurationpage?name=' + encodeURIComponent(name);
+            }
+
+            function setTabs(selectedIndex) {
+                var tabs = [
+                    { href: getConfigurationPageUrl('Janitorfin'), name: 'Settings' },
+                    { href: getConfigurationPageUrl('Janitorfin_Preview'), name: 'Preview' }
+                ];
+                var container = document.querySelector('#navigationTabs');
+                container.innerHTML = '';
+                tabs.forEach(function (tab, index) {
+                    var element = document.createElement('a');
+                    element.innerHTML = tab.name;
+                    element.className = 'emby-button' + (index === selectedIndex ? ' ui-btn-active' : '');
+                    element.dataset.role = 'button';
+                    element.addEventListener('click', function () {
+                        Dashboard.navigate('/' + tab.href, false);
+                    });
+                    container.appendChild(element);
+                });
+            }
+
+            function postJson(url) {
+                return ApiClient.fetch({
+                    url: ApiClient.getUrl(url),
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: '{}'
+                });
+            }
+
+            function normalizeRule(rule) {
+                rule = rule || {};
+                return {
+                    DeleteAfterWatchDays: typeof rule.DeleteAfterWatchDays === 'number' ? rule.DeleteAfterWatchDays : -2,
+                    DeleteNeverWatchedAfterDays: typeof rule.DeleteNeverWatchedAfterDays === 'number' ? rule.DeleteNeverWatchedAfterDays : -2
+                };
+            }
+
+            function normalizeLibraryRule(rule) {
+                rule = rule || {};
+                return {
+                    LibraryName: rule.LibraryName || '',
+                    LibraryPathPrefix: rule.LibraryPathPrefix || '',
+                    DefaultRules: normalizeRule(rule.DefaultRules),
+                    MovieRules: normalizeRule(rule.MovieRules),
+                    EpisodeRules: normalizeRule(rule.EpisodeRules),
+                    VideoRules: normalizeRule(rule.VideoRules)
+                };
+            }
+
+            function normalizeConfig(config) {
+                config.MovieRules = normalizeRule(config.MovieRules);
+                config.EpisodeRules = normalizeRule(config.EpisodeRules);
+                config.VideoRules = normalizeRule(config.VideoRules);
+                config.LibraryRules = (config.LibraryRules || []).map(normalizeLibraryRule);
+                if (typeof config.SonarrUnmonitorScope !== 'number') {
+                    config.SonarrUnmonitorScope = 0;
+                }
+                return config;
+            }
+
+            function setRuleInputs(prefix, rule) {
+                document.querySelector('#' + prefix + 'DeleteAfterWatchDays').value = rule.DeleteAfterWatchDays;
+                document.querySelector('#' + prefix + 'DeleteNeverWatchedAfterDays').value = rule.DeleteNeverWatchedAfterDays;
+            }
+
+            function getRuleInputs(prefix) {
+                return {
+                    DeleteAfterWatchDays: parseInt(document.querySelector('#' + prefix + 'DeleteAfterWatchDays').value || '-2', 10),
+                    DeleteNeverWatchedAfterDays: parseInt(document.querySelector('#' + prefix + 'DeleteNeverWatchedAfterDays').value || '-2', 10)
+                };
+            }
+
+            document.querySelector('#JanitorfinConfigPage')
+                .addEventListener('pageshow', function () {
+                    setTabs(0);
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(JanitorfinConfig.pluginUniqueId).then(function (config) {
+                        config = normalizeConfig(config);
+                        document.querySelector('#DeleteAfterWatchDays').value = config.DeleteAfterWatchDays;
+                        document.querySelector('#DeleteNeverWatchedAfterDays').value = config.DeleteNeverWatchedAfterDays;
+                        setRuleInputs('MovieRules', config.MovieRules);
+                        setRuleInputs('EpisodeRules', config.EpisodeRules);
+                        setRuleInputs('VideoRules', config.VideoRules);
+                        document.querySelector('#LibraryRulesJson').value = JSON.stringify(config.LibraryRules || [], null, 2);
+                        document.querySelector('#ProtectedTag').value = config.ProtectedTag || '';
+                        document.querySelector('#DryRun').checked = config.DryRun;
+                        document.querySelector('#EnableRadarrIntegration').checked = config.EnableRadarrIntegration;
+                        document.querySelector('#RadarrServerUrl').value = config.RadarrServerUrl || '';
+                        document.querySelector('#RadarrApiKey').value = config.RadarrApiKey || '';
+                        document.querySelector('#UnmonitorRadarrOnDelete').checked = config.UnmonitorRadarrOnDelete;
+                        document.querySelector('#EnableSonarrIntegration').checked = config.EnableSonarrIntegration;
+                        document.querySelector('#SonarrServerUrl').value = config.SonarrServerUrl || '';
+                        document.querySelector('#SonarrApiKey').value = config.SonarrApiKey || '';
+                        document.querySelector('#UnmonitorSonarrOnDelete').checked = config.UnmonitorSonarrOnDelete;
+                        document.querySelector('#SonarrUnmonitorScope').value = String(config.SonarrUnmonitorScope);
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+            document.querySelector('#OpenPreviewPage').addEventListener('click', function () {
+                Dashboard.navigate('/' + getConfigurationPageUrl('Janitorfin_Preview'), false);
+            });
+
+            document.querySelector('#TestRadarrConnection').addEventListener('click', function () {
+                var resultElement = document.querySelector('#RadarrTestResult');
+                Dashboard.showLoadingMsg();
+                postJson('Janitorfin/Test/Radarr').then(function (result) {
+                    resultElement.textContent = result.Message;
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    resultElement.textContent = error.message || 'Radarr connection test failed.';
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#TestSonarrConnection').addEventListener('click', function () {
+                var resultElement = document.querySelector('#SonarrTestResult');
+                Dashboard.showLoadingMsg();
+                postJson('Janitorfin/Test/Sonarr').then(function (result) {
+                    resultElement.textContent = result.Message;
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    resultElement.textContent = error.message || 'Sonarr connection test failed.';
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#JanitorfinConfigForm')
+                .addEventListener('submit', function (e) {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(JanitorfinConfig.pluginUniqueId).then(function (config) {
+                        config = normalizeConfig(config);
+                        var libraryRulesJson = document.querySelector('#LibraryRulesJson').value || '[]';
+                        var libraryRules;
+
+                        try {
+                            libraryRules = JSON.parse(libraryRulesJson).map(normalizeLibraryRule);
+                        } catch (error) {
+                            Dashboard.hideLoadingMsg();
+                            window.alert('Library rule JSON is invalid: ' + (error.message || error));
+                            return;
+                        }
+
+                        config.DeleteAfterWatchDays = parseInt(document.querySelector('#DeleteAfterWatchDays').value || '-1', 10);
+                        config.DeleteNeverWatchedAfterDays = parseInt(document.querySelector('#DeleteNeverWatchedAfterDays').value || '-1', 10);
+                        config.MovieRules = getRuleInputs('MovieRules');
+                        config.EpisodeRules = getRuleInputs('EpisodeRules');
+                        config.VideoRules = getRuleInputs('VideoRules');
+                        config.LibraryRules = libraryRules;
+                        config.ProtectedTag = document.querySelector('#ProtectedTag').value;
+                        config.DryRun = document.querySelector('#DryRun').checked;
+                        config.EnableRadarrIntegration = document.querySelector('#EnableRadarrIntegration').checked;
+                        config.RadarrServerUrl = document.querySelector('#RadarrServerUrl').value;
+                        config.RadarrApiKey = document.querySelector('#RadarrApiKey').value;
+                        config.UnmonitorRadarrOnDelete = document.querySelector('#UnmonitorRadarrOnDelete').checked;
+                        config.EnableSonarrIntegration = document.querySelector('#EnableSonarrIntegration').checked;
+                        config.SonarrServerUrl = document.querySelector('#SonarrServerUrl').value;
+                        config.SonarrApiKey = document.querySelector('#SonarrApiKey').value;
+                        config.UnmonitorSonarrOnDelete = document.querySelector('#UnmonitorSonarrOnDelete').checked;
+                        config.SonarrUnmonitorScope = parseInt(document.querySelector('#SonarrUnmonitorScope').value || '0', 10);
+
+                        ApiClient.updatePluginConfiguration(JanitorfinConfig.pluginUniqueId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+
+                    e.preventDefault();
+                    return false;
+                });
+        </script>
+    </div>
+</body>
+</html>
