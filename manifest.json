@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Janitorfin",
+    "description": "A Jellyfin-native cleanup plugin for automatically finding stale media, staging it for review, and eventually deleting it once it still matches your retention rules after a grace period.",
+    "overview": "Automated media cleanup for Jellyfin with staged deletion and review.",
+    "owner": "Exor.dev",
+    "category": "Administration",
+    "guid": "8eab83a3-4377-4036-8b37-68bc4767bc9e",
+    "versions": [
+      {
+        "version": "1.0.1",
+        "changelog": "Full Changelog: https://github.com/Exor-o7/Janitorfin/commits/v1.0.1",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Exor-o7/Janitorfin/releases/download/v1.0.1/Janitorfin.zip",
+        "checksum": "3e83c7a3adc1d6eba4ebb64878fe6208",
+        "timestamp": "2026-03-26T04:52:06.8399780Z",
+        "repositoryName": "Janitorfin",
+        "repositoryUrl": "https://raw.githubusercontent.com/Exor-o7/Janitorfin/main/manifest.json"
+      }
+    ]
+  }
+]

@@ -28,6 +28,8 @@
   <a href="https://github.com/Exor-o7/Janitorfin/issues">Issues</a>
   |
   <a href="https://github.com/Exor-o7/Janitorfin/releases/latest/download/Janitorfin.zip">Latest Plugin Zip</a>
+  |
+  <a href="https://raw.githubusercontent.com/Exor-o7/Janitorfin/main/manifest.json">Plugin Repository Manifest</a>
 </p>
 
 ## Introduction
@@ -95,6 +97,18 @@ When pending deletion is enabled, Janitorfin does not delete matching items imme
 2. Extract the contents into your Jellyfin plugin directory, for example `plugins/Janitorfin`.
 3. Restart Jellyfin.
 4. Open Dashboard > Plugins > Janitorfin to configure rules.
+
+### Install Through A Jellyfin Repository
+
+Use this repository manifest URL in Jellyfin to let the server resolve Janitorfin metadata and detect updates:
+
+`https://raw.githubusercontent.com/Exor-o7/Janitorfin/main/manifest.json`
+
+1. Add the repository manifest URL above in Jellyfin's plugin repositories settings.
+2. Refresh repositories.
+3. Install or update Janitorfin from the repository entry instead of relying only on a manual zip install.
+
+The release workflow keeps this manifest updated automatically for future tagged releases.
 
 ### Automatic Releases
 
@@ -183,7 +197,8 @@ dotnet publish .\Janitorfin.Plugin\Janitorfin.Plugin.csproj -c Release -o .\arti
 1. Update the plugin version in `Janitorfin.Plugin/Janitorfin.Plugin.csproj`.
 2. Commit and push your changes.
 3. Create and push a version tag such as `v1.0.3`.
-4. GitHub Actions will create the release and upload `Janitorfin.zip` automatically.
+4. Make sure the git tag matches the plugin project version exactly.
+5. GitHub Actions will create the release, upload `Janitorfin.zip`, and refresh the Jellyfin repository manifest automatically.
 
 ### Workspace Notes
 
