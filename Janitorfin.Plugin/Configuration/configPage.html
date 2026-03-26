@@ -949,11 +949,13 @@
                 var taskId = getValue(result, 'taskId', 'TaskId') || '';
                 var currentProgress = getValue(result, 'currentProgress', 'CurrentProgress');
                 var alreadyRunning = !!getValue(result, 'alreadyRunning', 'AlreadyRunning');
+                var dryRun = !!getValue(result, 'dryRun', 'DryRun');
 
                 setInlineDebugDump('Cleanup task payload', result);
 
                 summary.textContent = [
                     message,
+                    dryRun ? 'Mode: Dry run.' : 'Mode: Live cleanup.',
                     'Task: ' + taskName + '.',
                     'State: ' + taskState + '.',
                     currentProgress === null || typeof currentProgress === 'undefined' ? '' : 'Progress: ' + Math.round(currentProgress) + '%.',
@@ -961,8 +963,10 @@
                 ].join(' ').trim();
 
                 renderInfoMessage(
-                    alreadyRunning ? 'Janitorfin cleanup is already active.' : 'Janitorfin cleanup is running as a scheduled task.',
-                    '<div class="fieldDescription">Open Dashboard &gt; Scheduled Tasks to watch progress. Preview and pending lists may be stale until the task finishes.</div>');
+                    alreadyRunning
+                        ? (dryRun ? 'Janitorfin dry run is already active.' : 'Janitorfin cleanup is already active.')
+                        : (dryRun ? 'Janitorfin is running as a scheduled dry run.' : 'Janitorfin cleanup is running as a scheduled task.'),
+                    '<div class="fieldDescription">Open Dashboard &gt; Scheduled Tasks to watch progress. The Run Cleanup Now button respects the saved Dry run setting.</div>');
             }
 
             function runInlineLiveCleanup() {
@@ -978,9 +982,11 @@
 
                 Dashboard.confirm({
                     title: 'Run Janitorfin Cleanup',
-                    message: config.EnablePendingDeletion
-                        ? 'This will apply the current form values. Newly matching items will be queued, and any expired pending items will be deleted.'
-                        : 'This will delete matching media immediately using the current form values.'
+                    message: config.DryRun
+                        ? 'Dry run is enabled. This will save the current form values and start the scheduled task in dry-run mode, so nothing will be deleted.'
+                        : config.EnablePendingDeletion
+                            ? 'This will apply the current form values. Newly matching items will be queued, and any expired pending items will be deleted.'
+                            : 'This will delete matching media immediately using the current form values.'
                 }).then(function () {
                     document.querySelector('#InlineExecutionSummary').textContent = 'Saving configuration and starting cleanup...';
                     Dashboard.showLoadingMsg();

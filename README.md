@@ -34,7 +34,7 @@
 
 ## Introduction
 
-Janitorfin is a Jellyfin-native cleanup plugin for automatically finding stale media, staging it for review, and eventually deleting it once it still matches your retention rules after a grace period.
+Janitorfin is a Jellyfin-native cleanup plugin by Exor.dev for automatically finding stale media, staging it for review, and eventually deleting it once it still matches your retention rules after a grace period.
 
 The plugin is intentionally closer to a Jellyfin-first equivalent of the cleanup workflows people typically use with tools like Maintainerr or Media Cleaner, but with native Jellyfin configuration, scheduled execution, pending review, and optional Radarr or Sonarr coordination.
 

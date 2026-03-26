@@ -158,17 +158,24 @@ public class JanitorfinController : ControllerBase
 
     private static CleanupTaskStartResult CreateCleanupTaskStartResult(IScheduledTaskWorker task, bool started, bool alreadyRunning)
     {
+        var configuration = Plugin.Instance?.Configuration;
+        var dryRun = configuration?.DryRun ?? true;
         var stateText = task.State.ToString();
         var message = started
-            ? "Janitorfin cleanup was started. Check Dashboard > Scheduled Tasks for progress."
+            ? dryRun
+                ? "Janitorfin dry run was started. Check Dashboard > Scheduled Tasks for progress."
+                : "Janitorfin cleanup was started. Check Dashboard > Scheduled Tasks for progress."
             : alreadyRunning
-                ? "Janitorfin cleanup is already running. Check Dashboard > Scheduled Tasks for progress."
+                ? dryRun
+                    ? "Janitorfin dry run is already running. Check Dashboard > Scheduled Tasks for progress."
+                    : "Janitorfin cleanup is already running. Check Dashboard > Scheduled Tasks for progress."
                 : "Janitorfin cleanup task state is unchanged.";
 
         return new CleanupTaskStartResult
         {
             Started = started,
             AlreadyRunning = alreadyRunning,
+            DryRun = dryRun,
             TaskId = task.Id,
             TaskName = task.Name,
             TaskState = stateText,

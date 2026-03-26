@@ -178,6 +178,8 @@ public sealed class CleanupTaskStartResult
 
     public bool AlreadyRunning { get; init; }
 
+    public bool DryRun { get; init; }
+
     public string TaskId { get; init; } = string.Empty;
 
     public string TaskName { get; init; } = string.Empty;
