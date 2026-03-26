@@ -3,6 +3,11 @@ obj/
 .vs/
 artifacts/
 
+# Environment or local-only files
+.env
+.env.*
+*.local
+
 # User-specific files
 *.user
 *.suo
@@ -10,7 +15,8 @@ artifacts/
 *.sln.docstates
 
 # VS Code local state
-.vscode/*.log
+.vscode/*
+!.vscode/tasks.json
 
 # OS-generated files
 Thumbs.db
