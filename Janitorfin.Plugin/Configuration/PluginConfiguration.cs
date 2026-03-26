@@ -10,6 +10,12 @@ public enum SonarrUnmonitorScope
     Series,
 }
 
+public enum TvCleanupScope
+{
+    Season,
+    Series,
+}
+
 public sealed class CleanupRuleConfiguration
 {
     public const int Inherit = -2;
@@ -58,7 +64,8 @@ public class PluginConfiguration : BasePluginConfiguration
         EpisodeRules = new CleanupRuleConfiguration();
         VideoRules = new CleanupRuleConfiguration();
         LibraryRules = [];
-        SonarrUnmonitorScope = SonarrUnmonitorScope.Episode;
+        TvCleanupScope = TvCleanupScope.Season;
+        SonarrUnmonitorScope = SonarrUnmonitorScope.Season;
     }
 
     public int DeleteAfterWatchDays { get; set; }
@@ -68,6 +75,8 @@ public class PluginConfiguration : BasePluginConfiguration
     public CleanupRuleConfiguration MovieRules { get; set; }
 
     public CleanupRuleConfiguration EpisodeRules { get; set; }
+
+    public TvCleanupScope TvCleanupScope { get; set; }
 
     public CleanupRuleConfiguration VideoRules { get; set; }
 

@@ -123,7 +123,7 @@ public static class HomeScreenSectionsIntegrationBootstrap
     private const string HomeScreenSectionsAssemblyMarker = ".HomeScreenSections";
     private const string HomeScreenSectionsPluginInterfaceTypeName = "Jellyfin.Plugin.HomeScreenSections.PluginInterface";
     private const string SectionId = "JanitorfinReview";
-    private const string SectionDisplayText = "Janitorfin Review";
+    private const string SectionDisplayText = "Removing Soon";
 
     private static readonly object SyncRoot = new();
     private static bool _initialized;

@@ -53,11 +53,11 @@
                                 <input id="EnableHomeScreenSectionsIntegration" name="EnableHomeScreenSectionsIntegration" type="checkbox" is="emby-checkbox" />
                                 <span>Integrate with Home Screen Sections when available</span>
                             </label>
-                            <div class="fieldDescription checkboxFieldDescription">When the Home Screen Sections plugin is installed, Janitorfin registers a Janitorfin Review row automatically. If it is not installed, Janitorfin continues using the Janitorfin Review collection by itself.</div>
+                            <div class="fieldDescription checkboxFieldDescription">When the Home Screen Sections plugin is installed, Janitorfin registers a Removing Soon row automatically. If it is not installed, Janitorfin continues using the Removing Soon collection by itself.</div>
                         </div>
 
                         <div class="fieldDescription" style="margin-top: 0.75em;">
-                            Janitorfin always mirrors staged items into the Jellyfin collection <strong>Janitorfin Review</strong> so users can browse the list like normal media and protect items by watching or favoriting them.
+                            Janitorfin always mirrors staged items into the Jellyfin collection <strong>Removing Soon</strong> so users can browse the list like normal media and protect items by watching or favoriting them.
                         </div>
                     </fieldset>
 
@@ -78,17 +78,26 @@
                     </fieldset>
 
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
-                        <legend><h2>Episode Rules</h2></legend>
+                        <legend><h2>TV Show Rules</h2></legend>
 
-                        <div class="fieldDescription" style="margin-bottom: 1em;">Use -1 to disable a specific episode cleanup rule.</div>
+                        <div class="fieldDescription" style="margin-bottom: 1em;">Use -1 to disable a specific TV cleanup rule. Episode eligibility is still evaluated per episode, then applied to the selected season or series scope.</div>
+
+                        <div class="selectContainer">
+                            <label class="selectLabel" for="TvCleanupScope">TV cleanup match scope</label>
+                            <select id="TvCleanupScope" is="emby-select">
+                                <option value="0">Season</option>
+                                <option value="1">Series</option>
+                            </select>
+                            <div class="fieldDescription">Season is the recommended default because TV content is usually managed per season. Janitorfin only stages episodes when every episode in the chosen season or series scope is eligible.</div>
+                        </div>
 
                         <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteAfterWatchDays">Episodes: watched days</label>
+                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteAfterWatchDays">TV: watched days</label>
                             <input id="EpisodeRulesDeleteAfterWatchDays" type="number" is="emby-input" min="-1" />
                         </div>
 
                         <div class="inputContainer">
-                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteNeverWatchedAfterDays">Episodes: never-watched days</label>
+                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteNeverWatchedAfterDays">TV: never-watched days</label>
                             <input id="EpisodeRulesDeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-1" />
                         </div>
                     </fieldset>
@@ -158,8 +167,9 @@
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
                                 <input id="UnmonitorSonarrOnDelete" name="UnmonitorSonarrOnDelete" type="checkbox" is="emby-checkbox" />
-                                <span>Unmonitor series or episodes after delete</span>
+                                <span>Unmonitor TV content after delete</span>
                             </label>
+                            <div class="fieldDescription checkboxFieldDescription">This controls how Sonarr monitoring is updated after Janitorfin deletes an episode. TV cleanup match scope is configured above in TV Show Rules.</div>
                         </div>
 
                         <div class="selectContainer">
@@ -169,7 +179,7 @@
                                 <option value="1">Season</option>
                                 <option value="2">Series</option>
                             </select>
-                            <div class="fieldDescription">Episode is the safest default. Season and Series broaden the change to avoid reacquisition for larger groups.</div>
+                            <div class="fieldDescription">This is separate from TV cleanup match scope. Season is the recommended default for most libraries; Series is broader, and Episode is the narrowest option.</div>
                         </div>
                     </fieldset>
 
@@ -208,7 +218,7 @@
                         <legend><h2>Pending Deletions</h2></legend>
 
                         <div class="fieldDescription" style="margin-bottom: 1em;">
-                            This list shows items already staged for deletion. Janitorfin also syncs the same items into the Jellyfin collection <strong>Janitorfin Review</strong>. If they keep matching the rules until their deadline, the next live cleanup run will remove them.
+                            This list shows items already staged for deletion. Janitorfin also syncs the same items into the Jellyfin collection <strong>Removing Soon</strong>. If they keep matching the rules until their deadline, the next live cleanup run will remove them.
                         </div>
 
                         <div>
@@ -227,7 +237,7 @@
         <script type="text/javascript">
             var JanitorfinConfig = {
                 pluginUniqueId: '8eab83a3-4377-4036-8b37-68bc4767bc9e',
-                pageVersion: '20260326c'
+                pageVersion: '20260326e'
             };
             var currentPluginConfig = null;
 
@@ -288,7 +298,10 @@
                     config.EnableHomeScreenSectionsIntegration = true;
                 }
                 if (typeof config.SonarrUnmonitorScope !== 'number') {
-                    config.SonarrUnmonitorScope = 0;
+                    config.SonarrUnmonitorScope = 1;
+                }
+                if (typeof config.TvCleanupScope !== 'number') {
+                    config.TvCleanupScope = 0;
                 }
 
                 return config;
@@ -315,6 +328,7 @@
                 config = normalizeConfig(config);
                 config.MovieRules = getRuleInputs('MovieRules');
                 config.EpisodeRules = getRuleInputs('EpisodeRules');
+                config.TvCleanupScope = parseInt(document.querySelector('#TvCleanupScope').value || '0', 10);
                 config.DeleteAfterWatchDays = config.MovieRules.DeleteAfterWatchDays;
                 config.DeleteNeverWatchedAfterDays = config.MovieRules.DeleteNeverWatchedAfterDays;
                 config.ProtectedTag = document.querySelector('#ProtectedTag').value;
@@ -367,6 +381,10 @@
                 }
 
                 return response;
+            }
+
+            function getTvCleanupScopeLabel(scopeValue) {
+                return String(scopeValue) === '1' ? 'Series' : 'Season';
             }
 
             function normalizeRejectedResponse(error) {
@@ -637,7 +655,8 @@
 
                 var summaryParts = [
                     'Scanned ' + scannedItemCount + ' items.',
-                    'Found ' + candidateCount + ' cleanup candidates.'
+                    'Found ' + candidateCount + ' cleanup candidates.',
+                    'TV cleanup scope: ' + getTvCleanupScopeLabel(document.querySelector('#TvCleanupScope').value || '0') + '.'
                 ];
 
                 if (pendingCandidateCount) {
@@ -682,6 +701,9 @@
                     }
                     if (seasonName) {
                         labels.push('Season: ' + escapeHtml(seasonName));
+                    }
+                    if (itemType === 'Episode') {
+                        labels.push('TV scope: ' + escapeHtml(getTvCleanupScopeLabel(document.querySelector('#TvCleanupScope').value || '0')));
                     }
                     if (formatEpisodeCode(candidate)) {
                         labels.push('Episode: ' + escapeHtml(formatEpisodeCode(candidate)));
@@ -957,6 +979,7 @@
                     }
                     setRuleInputs('MovieRules', config.MovieRules);
                     setRuleInputs('EpisodeRules', config.EpisodeRules);
+                    document.querySelector('#TvCleanupScope').value = String(config.TvCleanupScope);
                     document.querySelector('#ProtectedTag').value = config.ProtectedTag || '';
                     document.querySelector('#KeepFavorites').checked = config.KeepFavorites !== false;
                     document.querySelector('#DryRun').checked = config.DryRun;

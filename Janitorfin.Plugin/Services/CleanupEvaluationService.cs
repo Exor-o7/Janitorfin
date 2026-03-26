@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
+using Jellyfin.Database.Implementations.Entities;
 using Janitorfin.Plugin.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
@@ -35,6 +36,13 @@ public sealed class CleanupEvaluationService
         public string WatchedRuleName { get; init; } = string.Empty;
 
         public string NeverWatchedRuleName { get; init; } = string.Empty;
+    }
+
+    private sealed class ItemEvaluationOutcome
+    {
+        public BaseItem Item { get; init; } = null!;
+
+        public CleanupCandidate? Candidate { get; init; }
     }
 
     private readonly ILibraryManager _libraryManager;
@@ -83,75 +91,42 @@ public sealed class CleanupEvaluationService
         var pendingEntriesById = _pendingDeletionQueueService.GetEntriesByItemId();
 
         var candidates = new List<CleanupCandidate>();
+        var episodeOutcomesByGroup = new Dictionary<string, List<ItemEvaluationOutcome>>(StringComparer.Ordinal);
 
         foreach (var item in items)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (ShouldSkipItem(item, configuration))
+            var outcome = EvaluateItem(item, configuration, users, now, pendingEntriesById);
+            if (outcome is null)
             {
                 continue;
             }
 
-            var userNames = new List<string>();
-            DateTime? latestPlayed = null;
-            var isFavorite = false;
-
-            foreach (var user in users)
+            if (item is Episode episode)
             {
-                if (user is null)
+                var groupKey = GetEpisodeCleanupGroupKey(episode, configuration.TvCleanupScope);
+                if (!episodeOutcomesByGroup.TryGetValue(groupKey, out var groupOutcomes))
                 {
-                    continue;
+                    groupOutcomes = new List<ItemEvaluationOutcome>();
+                    episodeOutcomesByGroup.Add(groupKey, groupOutcomes);
                 }
 
-                var userData = _userDataManager.GetUserData(user, item);
-                if (userData is null)
-                {
-                    continue;
-                }
-
-                if (configuration.KeepFavorites && userData.IsFavorite)
-                {
-                    isFavorite = true;
-                    break;
-                }
-
-                if (userData.Played || userData.PlayCount > 0 || userData.LastPlayedDate.HasValue)
-                {
-                    userNames.Add(user.Username ?? "Unknown user");
-                }
-
-                if (userData.LastPlayedDate.HasValue
-                    && (!latestPlayed.HasValue || userData.LastPlayedDate.Value > latestPlayed.Value))
-                {
-                    latestPlayed = userData.LastPlayedDate.Value;
-                }
-            }
-
-            if (isFavorite)
-            {
+                groupOutcomes.Add(outcome);
                 continue;
             }
 
-            var addedUtc = NormalizeUtc(item.DateCreated);
-            var libraryName = _libraryManager.GetCollectionFolders(item).FirstOrDefault()?.Name;
-            var resolvedRules = ResolveRules(configuration, item, libraryName);
-            var watchedCutoff = resolvedRules.DeleteAfterWatchDays.HasValue
-                ? now.AddDays(-resolvedRules.DeleteAfterWatchDays.Value)
-                : (DateTime?)null;
-            var neverWatchedCutoff = resolvedRules.DeleteNeverWatchedAfterDays.HasValue
-                ? now.AddDays(-resolvedRules.DeleteNeverWatchedAfterDays.Value)
-                : (DateTime?)null;
-
-            if (watchedCutoff.HasValue && latestPlayed.HasValue && latestPlayed.Value <= watchedCutoff.Value)
+            if (outcome.Candidate is not null)
             {
-                candidates.Add(BuildCandidate(item, libraryName, resolvedRules, CleanupReasonKind.WatchedExceeded, latestPlayed, addedUtc, userNames, pendingEntriesById.GetValueOrDefault(item.Id)));
-                continue;
+                candidates.Add(outcome.Candidate);
             }
+        }
 
-            if (neverWatchedCutoff.HasValue && !latestPlayed.HasValue && addedUtc.HasValue && addedUtc.Value <= neverWatchedCutoff.Value)
+        foreach (var groupOutcomes in episodeOutcomesByGroup.Values)
+        {
+            if (groupOutcomes.All(outcome => outcome.Candidate is not null))
             {
-                candidates.Add(BuildCandidate(item, libraryName, resolvedRules, CleanupReasonKind.NeverWatchedExceeded, latestPlayed, addedUtc, userNames, pendingEntriesById.GetValueOrDefault(item.Id)));
+                candidates.AddRange(groupOutcomes.Select(outcome => outcome.Candidate!));
             }
         }
 
@@ -223,6 +198,116 @@ public sealed class CleanupEvaluationService
         }
 
         return false;
+    }
+
+    private static string GetEpisodeCleanupGroupKey(Episode episode, TvCleanupScope scope)
+    {
+        if (scope == TvCleanupScope.Series && episode.Series is not null)
+        {
+            return "series:" + episode.Series.Id.ToString("N", CultureInfo.InvariantCulture);
+        }
+
+        if (scope == TvCleanupScope.Season)
+        {
+            if (episode.Season is not null)
+            {
+                return "season:" + episode.Season.Id.ToString("N", CultureInfo.InvariantCulture);
+            }
+
+            if (episode.Series is not null && episode.ParentIndexNumber.HasValue)
+            {
+                return "series-season:" + episode.Series.Id.ToString("N", CultureInfo.InvariantCulture) + ":" + episode.ParentIndexNumber.Value.ToString(CultureInfo.InvariantCulture);
+            }
+        }
+
+        if (episode.Series is not null)
+        {
+            return "series:" + episode.Series.Id.ToString("N", CultureInfo.InvariantCulture);
+        }
+
+        return "episode:" + episode.Id.ToString("N", CultureInfo.InvariantCulture);
+    }
+
+    private ItemEvaluationOutcome? EvaluateItem(
+        BaseItem item,
+        PluginConfiguration configuration,
+        IReadOnlyList<User> users,
+        DateTime now,
+        IReadOnlyDictionary<Guid, PendingDeletionEntry> pendingEntriesById)
+    {
+        if (ShouldSkipItem(item, configuration))
+        {
+            return null;
+        }
+
+        var userNames = new List<string>();
+        DateTime? latestPlayed = null;
+
+        foreach (var user in users)
+        {
+            if (user is null)
+            {
+                continue;
+            }
+
+            var userData = _userDataManager.GetUserData(user, item);
+            if (userData is null)
+            {
+                continue;
+            }
+
+            if (configuration.KeepFavorites && userData.IsFavorite)
+            {
+                return new ItemEvaluationOutcome
+                {
+                    Item = item,
+                };
+            }
+
+            if (userData.Played || userData.PlayCount > 0 || userData.LastPlayedDate.HasValue)
+            {
+                userNames.Add(user.Username ?? "Unknown user");
+            }
+
+            if (userData.LastPlayedDate.HasValue
+                && (!latestPlayed.HasValue || userData.LastPlayedDate.Value > latestPlayed.Value))
+            {
+                latestPlayed = userData.LastPlayedDate.Value;
+            }
+        }
+
+        var addedUtc = NormalizeUtc(item.DateCreated);
+        var libraryName = _libraryManager.GetCollectionFolders(item).FirstOrDefault()?.Name;
+        var resolvedRules = ResolveRules(configuration, item, libraryName);
+        var watchedCutoff = resolvedRules.DeleteAfterWatchDays.HasValue
+            ? now.AddDays(-resolvedRules.DeleteAfterWatchDays.Value)
+            : (DateTime?)null;
+        var neverWatchedCutoff = resolvedRules.DeleteNeverWatchedAfterDays.HasValue
+            ? now.AddDays(-resolvedRules.DeleteNeverWatchedAfterDays.Value)
+            : (DateTime?)null;
+
+        if (watchedCutoff.HasValue && latestPlayed.HasValue && latestPlayed.Value <= watchedCutoff.Value)
+        {
+            return new ItemEvaluationOutcome
+            {
+                Item = item,
+                Candidate = BuildCandidate(item, libraryName, resolvedRules, CleanupReasonKind.WatchedExceeded, latestPlayed, addedUtc, userNames, pendingEntriesById.GetValueOrDefault(item.Id)),
+            };
+        }
+
+        if (neverWatchedCutoff.HasValue && !latestPlayed.HasValue && addedUtc.HasValue && addedUtc.Value <= neverWatchedCutoff.Value)
+        {
+            return new ItemEvaluationOutcome
+            {
+                Item = item,
+                Candidate = BuildCandidate(item, libraryName, resolvedRules, CleanupReasonKind.NeverWatchedExceeded, latestPlayed, addedUtc, userNames, pendingEntriesById.GetValueOrDefault(item.Id)),
+            };
+        }
+
+        return new ItemEvaluationOutcome
+        {
+            Item = item,
+        };
     }
 
     private static ResolvedCleanupRules ResolveRules(PluginConfiguration configuration, BaseItem item, string? libraryName)

@@ -15,7 +15,7 @@ namespace Janitorfin.Plugin.Services;
 
 public sealed class PendingDeletionReviewCollectionService
 {
-    public const string DefaultCollectionName = "Janitorfin Review";
+    public const string DefaultCollectionName = "Removing Soon";
 
     private readonly ICollectionManager _collectionManager;
     private readonly ILibraryManager _libraryManager;
