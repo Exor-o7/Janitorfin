@@ -1,0 +1,39 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="0.55" stop-color="#16324F"/>
+      <stop offset="1" stop-color="#14532D"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="120" y1="64" x2="1080" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="320" rx="28" fill="url(#bg)"/>
+  <rect x="32" y="32" width="1136" height="256" rx="22" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)"/>
+
+  <circle cx="1030" cy="92" r="92" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="1090" cy="228" r="54" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="932" cy="244" r="32" fill="rgba(255,255,255,0.04)"/>
+
+  <rect x="88" y="72" width="164" height="34" rx="17" fill="rgba(245,158,11,0.16)" stroke="rgba(245,158,11,0.45)"/>
+  <text x="170" y="94" text-anchor="middle" fill="#FCD34D" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">JELLYFIN PLUGIN</text>
+
+  <text x="88" y="154" fill="white" font-family="Segoe UI, Arial, sans-serif" font-size="56" font-weight="800">Janitorfin</text>
+  <text x="88" y="192" fill="#D1D5DB" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="500">Staged cleanup for Jellyfin with Removing Soon review,</text>
+  <text x="88" y="222" fill="#D1D5DB" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="500">season-aware TV rules, and Radarr or Sonarr unmonitor support.</text>
+
+  <rect x="88" y="246" width="178" height="34" rx="17" fill="rgba(255,255,255,0.08)"/>
+  <text x="177" y="268" text-anchor="middle" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">Removing Soon</text>
+
+  <rect x="280" y="246" width="218" height="34" rx="17" fill="rgba(255,255,255,0.08)"/>
+  <text x="389" y="268" text-anchor="middle" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">Season or Series TV Scope</text>
+
+  <rect x="512" y="246" width="196" height="34" rx="17" fill="rgba(255,255,255,0.08)"/>
+  <text x="610" y="268" text-anchor="middle" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">Radarr and Sonarr Aware</text>
+
+  <path d="M812 187C858 154 886 119 925 113C964 107 998 130 1030 130C1062 130 1090 112 1126 89" stroke="url(#accent)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M835 208C879 215 912 210 948 192C982 175 1010 164 1049 175C1088 186 1117 212 1138 221" stroke="#F8FAFC" stroke-opacity="0.65" stroke-width="6" stroke-linecap="round"/>
+</svg>

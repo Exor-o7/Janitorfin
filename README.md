@@ -1,5 +1,10 @@
 <h1 align="center">Janitorfin</h1>
 <h2 align="center">A Jellyfin Plugin</h2>
+
+<p align="center">
+  <img alt="Janitorfin banner" src="./assets/readme-banner.svg" />
+</p>
+
 <p align="center">
   <a href="https://github.com/Exor-o7/Janitorfin">
     <img alt="GitHub Repo" src="https://img.shields.io/badge/GitHub-Exor--o7%2FJanitorfin-181717?logo=github" />
@@ -18,6 +23,8 @@
   <a href="https://github.com/Exor-o7/Janitorfin/releases">Releases</a>
   |
   <a href="https://github.com/Exor-o7/Janitorfin/issues">Issues</a>
+  |
+  <a href="https://github.com/Exor-o7/Janitorfin/releases/latest/download/Janitorfin.zip">Latest Plugin Zip</a>
 </p>
 
 ## Introduction
@@ -79,12 +86,20 @@ When pending deletion is enabled, Janitorfin does not delete matching items imme
 - Jellyfin `10.11.6`
 - Plugin target framework `net9.0`
 
+### Install From Releases
+
+1. Download the latest packaged plugin zip from [GitHub Releases](https://github.com/Exor-o7/Janitorfin/releases/latest) or directly from [Janitorfin.zip](https://github.com/Exor-o7/Janitorfin/releases/latest/download/Janitorfin.zip).
+2. Extract the contents into your Jellyfin plugin directory, for example `plugins/Janitorfin`.
+3. Restart Jellyfin.
+4. Open Dashboard > Plugins > Janitorfin to configure rules.
+
 ### Install From Local Build
 
 1. Build or publish the plugin.
-2. Copy the published output from `artifacts/publish/Janitorfin` into your Jellyfin plugins directory.
-3. Restart Jellyfin.
-4. Open the Janitorfin plugin page from the Jellyfin dashboard.
+2. Optionally package it as `Janitorfin.zip` using the workspace task in `.vscode/tasks.json`.
+3. Copy the published output from `artifacts/publish/Janitorfin` into your Jellyfin plugins directory.
+4. Restart Jellyfin.
+5. Open the Janitorfin plugin page from the Jellyfin dashboard.
 
 ## Configuration
 
