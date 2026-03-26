@@ -928,6 +928,43 @@
                 });
             }
 
+            function saveCurrentConfiguration(config, skipPendingRefresh) {
+                return ApiClient.updatePluginConfiguration(JanitorfinConfig.pluginUniqueId, config).then(function (result) {
+                    currentPluginConfig = normalizeConfig(config);
+
+                    if (!skipPendingRefresh) {
+                        loadPendingDeletionSummary();
+                    }
+
+                    Dashboard.processPluginConfigurationUpdateResult(result);
+                    return result;
+                });
+            }
+
+            function renderCleanupTaskStart(result) {
+                var summary = document.querySelector('#InlineExecutionSummary');
+                var message = getValue(result, 'message', 'Message') || 'Cleanup task request completed.';
+                var taskName = getValue(result, 'taskName', 'TaskName') || 'Janitorfin Cleanup';
+                var taskState = getValue(result, 'taskState', 'TaskState') || 'Unknown';
+                var taskId = getValue(result, 'taskId', 'TaskId') || '';
+                var currentProgress = getValue(result, 'currentProgress', 'CurrentProgress');
+                var alreadyRunning = !!getValue(result, 'alreadyRunning', 'AlreadyRunning');
+
+                setInlineDebugDump('Cleanup task payload', result);
+
+                summary.textContent = [
+                    message,
+                    'Task: ' + taskName + '.',
+                    'State: ' + taskState + '.',
+                    currentProgress === null || typeof currentProgress === 'undefined' ? '' : 'Progress: ' + Math.round(currentProgress) + '%.',
+                    taskId ? 'Task ID: ' + taskId + '.' : ''
+                ].join(' ').trim();
+
+                renderInfoMessage(
+                    alreadyRunning ? 'Janitorfin cleanup is already active.' : 'Janitorfin cleanup is running as a scheduled task.',
+                    '<div class="fieldDescription">Open Dashboard &gt; Scheduled Tasks to watch progress. Preview and pending lists may be stale until the task finishes.</div>');
+            }
+
             function runInlineLiveCleanup() {
                 var config;
 
@@ -945,16 +982,16 @@
                         ? 'This will apply the current form values. Newly matching items will be queued, and any expired pending items will be deleted.'
                         : 'This will delete matching media immediately using the current form values.'
                 }).then(function () {
-                    document.querySelector('#InlineExecutionSummary').textContent = 'Running cleanup...';
+                    document.querySelector('#InlineExecutionSummary').textContent = 'Saving configuration and starting cleanup...';
                     Dashboard.showLoadingMsg();
-                    fetchJson('Janitorfin/Execute/WithConfiguration?dryRun=false', 'POST', config).then(function (result) {
-                        renderInlineExecutionSummary(result);
-                        renderInfoMessage('Preview may now be stale.', '<div class="fieldDescription">Refresh Preview to recompute candidates after the cleanup run.</div>');
-                        loadPendingDeletionSummary();
+                    saveCurrentConfiguration(config, true).then(function () {
+                        return fetchJson('Janitorfin/Tasks/Cleanup/Run', 'POST');
+                    }).then(function (result) {
+                        renderCleanupTaskStart(result);
                         Dashboard.hideLoadingMsg();
                     }).catch(function (error) {
                         setInlineDebugDump('Cleanup error', error);
-                        document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Cleanup execution failed.');
+                        document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Cleanup task failed to start.');
                         Dashboard.hideLoadingMsg();
                     });
                 });
@@ -1056,10 +1093,8 @@
                         return;
                     }
 
-                    ApiClient.updatePluginConfiguration(JanitorfinConfig.pluginUniqueId, config).then(function (result) {
-                        currentPluginConfig = normalizeConfig(config);
-                        loadPendingDeletionSummary();
-                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    saveCurrentConfiguration(config, false).finally(function () {
+                        Dashboard.hideLoadingMsg();
                     });
                 });
 

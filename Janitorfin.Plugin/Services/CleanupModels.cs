@@ -172,6 +172,23 @@ public sealed class CleanupExecutionSummary
     public IReadOnlyList<CleanupExecutionResult> Results { get; init; } = Array.Empty<CleanupExecutionResult>();
 }
 
+public sealed class CleanupTaskStartResult
+{
+    public bool Started { get; init; }
+
+    public bool AlreadyRunning { get; init; }
+
+    public string TaskId { get; init; } = string.Empty;
+
+    public string TaskName { get; init; } = string.Empty;
+
+    public string TaskState { get; init; } = string.Empty;
+
+    public double? CurrentProgress { get; init; }
+
+    public string Message { get; init; } = string.Empty;
+}
+
 public sealed class PendingDeletionEntry
 {
     public Guid ItemId { get; set; }
