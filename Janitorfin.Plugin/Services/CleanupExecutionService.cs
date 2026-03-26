@@ -10,8 +10,11 @@ namespace Janitorfin.Plugin.Services;
 
 public sealed class CleanupExecutionService
 {
+    public const int DefaultExecutionResultDetailLimit = 100;
+
     private readonly CleanupEvaluationService _cleanupEvaluationService;
     private readonly ILibraryManager _libraryManager;
+    private readonly PendingDeletionQueueService _pendingDeletionQueueService;
     private readonly IRadarrClient _radarrClient;
     private readonly ISonarrClient _sonarrClient;
     private readonly ILogger<CleanupExecutionService> _logger;
@@ -19,12 +22,14 @@ public sealed class CleanupExecutionService
     public CleanupExecutionService(
         CleanupEvaluationService cleanupEvaluationService,
         ILibraryManager libraryManager,
+        PendingDeletionQueueService pendingDeletionQueueService,
         IRadarrClient radarrClient,
         ISonarrClient sonarrClient,
         ILogger<CleanupExecutionService> logger)
     {
         _cleanupEvaluationService = cleanupEvaluationService;
         _libraryManager = libraryManager;
+        _pendingDeletionQueueService = pendingDeletionQueueService;
         _radarrClient = radarrClient;
         _sonarrClient = sonarrClient;
         _logger = logger;
@@ -36,33 +41,91 @@ public sealed class CleanupExecutionService
 
         var evaluation = await _cleanupEvaluationService.EvaluateAsync(configuration, cancellationToken).ConfigureAwait(false);
         var dryRun = dryRunOverride ?? configuration.DryRun;
+        var now = DateTime.UtcNow;
         var results = new List<CleanupExecutionResult>();
+        var resultCount = 0;
         var deletedCount = 0;
         var failedCount = 0;
+        var queuedCount = 0;
+        var pendingCount = 0;
         var radarrUpdatedCount = 0;
         var sonarrUpdatedCount = 0;
+
+        if (!dryRun && configuration.EnablePendingDeletion)
+        {
+            _pendingDeletionQueueService.ReconcileAndQueueEligibleCandidates(configuration, evaluation.Candidates, now);
+        }
+
+        var pendingEntriesById = configuration.EnablePendingDeletion
+            ? _pendingDeletionQueueService.GetEntriesByItemId()
+            : new Dictionary<Guid, PendingDeletionEntry>();
 
         foreach (var candidate in evaluation.Candidates)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            pendingEntriesById.TryGetValue(candidate.ItemId, out var pendingEntry);
+
             if (dryRun)
             {
-                results.Add(new CleanupExecutionResult
+                var dryRunOutcome = configuration.EnablePendingDeletion
+                    ? pendingEntry is null
+                        ? "Would be queued for staged deletion"
+                        : pendingEntry.DeleteAfterUtc <= now
+                            ? "Pending grace period elapsed; ready for deletion"
+                            : "Pending grace period"
+                    : "Dry run candidate";
+
+                AddResult(results, new CleanupExecutionResult
                 {
                     ItemId = candidate.ItemId,
                     ItemName = candidate.ItemName,
                     ItemType = candidate.ItemType,
-                    Outcome = "Dry run candidate",
+                    Outcome = dryRunOutcome,
+                    PendingDeleteAfterUtc = pendingEntry?.DeleteAfterUtc,
                 });
+                resultCount++;
                 continue;
+            }
+
+            if (configuration.EnablePendingDeletion)
+            {
+                if (pendingEntry is null)
+                {
+                    queuedCount++;
+                    AddResult(results, new CleanupExecutionResult
+                    {
+                        ItemId = candidate.ItemId,
+                        ItemName = candidate.ItemName,
+                        ItemType = candidate.ItemType,
+                        Outcome = "Queued for staged deletion",
+                    });
+                    resultCount++;
+                    continue;
+                }
+
+                if (pendingEntry.DeleteAfterUtc > now)
+                {
+                    pendingCount++;
+                    AddResult(results, new CleanupExecutionResult
+                    {
+                        ItemId = candidate.ItemId,
+                        ItemName = candidate.ItemName,
+                        ItemType = candidate.ItemType,
+                        Outcome = "Pending grace period",
+                        PendingDeleteAfterUtc = pendingEntry.DeleteAfterUtc,
+                    });
+                    resultCount++;
+                    continue;
+                }
             }
 
             var item = _libraryManager.GetItemById(candidate.ItemId);
             if (item is null)
             {
                 failedCount++;
-                results.Add(new CleanupExecutionResult
+                _pendingDeletionQueueService.RemoveEntry(candidate.ItemId);
+                AddResult(results, new CleanupExecutionResult
                 {
                     ItemId = candidate.ItemId,
                     ItemName = candidate.ItemName,
@@ -70,6 +133,7 @@ public sealed class CleanupExecutionService
                     Outcome = "Skipped",
                     Error = "Item no longer exists in Jellyfin.",
                 });
+                resultCount++;
                 continue;
             }
 
@@ -86,7 +150,7 @@ public sealed class CleanupExecutionService
                     if (!radarrResult.Success)
                     {
                         failedCount++;
-                        results.Add(new CleanupExecutionResult
+                        AddResult(results, new CleanupExecutionResult
                         {
                             ItemId = candidate.ItemId,
                             ItemName = candidate.ItemName,
@@ -94,6 +158,7 @@ public sealed class CleanupExecutionService
                             Outcome = "Skipped",
                             Error = radarrResult.Message,
                         });
+                        resultCount++;
                         continue;
                     }
 
@@ -109,7 +174,7 @@ public sealed class CleanupExecutionService
                     if (!sonarrResult.Success)
                     {
                         failedCount++;
-                        results.Add(new CleanupExecutionResult
+                        AddResult(results, new CleanupExecutionResult
                         {
                             ItemId = candidate.ItemId,
                             ItemName = candidate.ItemName,
@@ -117,6 +182,7 @@ public sealed class CleanupExecutionService
                             Outcome = "Skipped",
                             Error = sonarrResult.Message,
                         });
+                        resultCount++;
                         continue;
                     }
 
@@ -125,8 +191,9 @@ public sealed class CleanupExecutionService
                 }
 
                 _libraryManager.DeleteItem(item, new DeleteOptions { DeleteFileLocation = true }, true);
+                _pendingDeletionQueueService.RemoveEntry(candidate.ItemId);
                 deletedCount++;
-                results.Add(new CleanupExecutionResult
+                AddResult(results, new CleanupExecutionResult
                 {
                     ItemId = candidate.ItemId,
                     ItemName = candidate.ItemName,
@@ -136,12 +203,13 @@ public sealed class CleanupExecutionService
                     SonarrUpdated = sonarrUpdated,
                     Outcome = "Deleted",
                 });
+                resultCount++;
             }
             catch (Exception ex)
             {
                 failedCount++;
                 _logger.LogError(ex, "Error processing cleanup candidate {ItemName} ({ItemId})", candidate.ItemName, candidate.ItemId);
-                results.Add(new CleanupExecutionResult
+                AddResult(results, new CleanupExecutionResult
                 {
                     ItemId = candidate.ItemId,
                     ItemName = candidate.ItemName,
@@ -151,6 +219,7 @@ public sealed class CleanupExecutionService
                     Outcome = "Failed",
                     Error = ex.Message,
                 });
+                resultCount++;
             }
         }
 
@@ -162,9 +231,23 @@ public sealed class CleanupExecutionService
             CandidateCount = evaluation.CandidateCount,
             DeletedCount = deletedCount,
             FailedCount = failedCount,
+            QueuedCount = queuedCount,
+            PendingCount = pendingCount,
             RadarrUpdatedCount = radarrUpdatedCount,
             SonarrUpdatedCount = sonarrUpdatedCount,
+            ResultCount = resultCount,
+            ResultDetailLimit = DefaultExecutionResultDetailLimit,
             Results = results,
         };
+    }
+
+    private static void AddResult(ICollection<CleanupExecutionResult> results, CleanupExecutionResult result)
+    {
+        if (results.Count >= DefaultExecutionResultDetailLimit)
+        {
+            return;
+        }
+
+        results.Add(result);
     }
 }

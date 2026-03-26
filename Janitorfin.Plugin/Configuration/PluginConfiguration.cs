@@ -47,6 +47,9 @@ public class PluginConfiguration : BasePluginConfiguration
         DeleteAfterWatchDays = 30;
         DeleteNeverWatchedAfterDays = 180;
         ProtectedTag = "janitorfin_keep";
+        KeepFavorites = true;
+        EnablePendingDeletion = true;
+        PendingDeletionGraceDays = 30;
         DryRun = true;
         UnmonitorRadarrOnDelete = true;
         UnmonitorSonarrOnDelete = true;
@@ -70,6 +73,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public List<LibraryRuleConfiguration> LibraryRules { get; set; }
 
     public string ProtectedTag { get; set; }
+
+    public bool KeepFavorites { get; set; }
+
+    public bool EnablePendingDeletion { get; set; }
+
+    public int PendingDeletionGraceDays { get; set; }
 
     public bool DryRun { get; set; }
 

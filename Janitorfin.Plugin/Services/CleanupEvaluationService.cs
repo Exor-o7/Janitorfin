@@ -17,6 +17,8 @@ namespace Janitorfin.Plugin.Services;
 
 public sealed class CleanupEvaluationService
 {
+    public const int DefaultPreviewCandidateDetailLimit = 200;
+
     private enum CandidateMediaKind
     {
         Movie,
@@ -38,21 +40,24 @@ public sealed class CleanupEvaluationService
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
+    private readonly PendingDeletionQueueService _pendingDeletionQueueService;
     private readonly ILogger<CleanupEvaluationService> _logger;
 
     public CleanupEvaluationService(
         ILibraryManager libraryManager,
         IUserManager userManager,
         IUserDataManager userDataManager,
+        PendingDeletionQueueService pendingDeletionQueueService,
         ILogger<CleanupEvaluationService> logger)
     {
         _libraryManager = libraryManager;
         _userManager = userManager;
         _userDataManager = userDataManager;
+        _pendingDeletionQueueService = pendingDeletionQueueService;
         _logger = logger;
     }
 
-    public Task<CleanupEvaluationSummary> EvaluateAsync(PluginConfiguration configuration, CancellationToken cancellationToken)
+    public Task<CleanupEvaluationSummary> EvaluateAsync(PluginConfiguration configuration, CancellationToken cancellationToken, int? candidateDetailLimit = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
@@ -75,6 +80,7 @@ public sealed class CleanupEvaluationService
         var items = _libraryManager.GetItemList(query);
         var users = _userManager.Users.ToArray();
         var now = DateTime.UtcNow;
+        var pendingEntriesById = _pendingDeletionQueueService.GetEntriesByItemId();
 
         var candidates = new List<CleanupCandidate>();
 
@@ -89,6 +95,7 @@ public sealed class CleanupEvaluationService
 
             var userNames = new List<string>();
             DateTime? latestPlayed = null;
+            var isFavorite = false;
 
             foreach (var user in users)
             {
@@ -103,6 +110,12 @@ public sealed class CleanupEvaluationService
                     continue;
                 }
 
+                if (configuration.KeepFavorites && userData.IsFavorite)
+                {
+                    isFavorite = true;
+                    break;
+                }
+
                 if (userData.Played || userData.PlayCount > 0 || userData.LastPlayedDate.HasValue)
                 {
                     userNames.Add(user.Username ?? "Unknown user");
@@ -113,6 +126,11 @@ public sealed class CleanupEvaluationService
                 {
                     latestPlayed = userData.LastPlayedDate.Value;
                 }
+            }
+
+            if (isFavorite)
+            {
+                continue;
             }
 
             var addedUtc = NormalizeUtc(item.DateCreated);
@@ -127,13 +145,13 @@ public sealed class CleanupEvaluationService
 
             if (watchedCutoff.HasValue && latestPlayed.HasValue && latestPlayed.Value <= watchedCutoff.Value)
             {
-                candidates.Add(BuildCandidate(item, libraryName, resolvedRules, CleanupReasonKind.WatchedExceeded, latestPlayed, addedUtc, userNames));
+                candidates.Add(BuildCandidate(item, libraryName, resolvedRules, CleanupReasonKind.WatchedExceeded, latestPlayed, addedUtc, userNames, pendingEntriesById.GetValueOrDefault(item.Id)));
                 continue;
             }
 
             if (neverWatchedCutoff.HasValue && !latestPlayed.HasValue && addedUtc.HasValue && addedUtc.Value <= neverWatchedCutoff.Value)
             {
-                candidates.Add(BuildCandidate(item, libraryName, resolvedRules, CleanupReasonKind.NeverWatchedExceeded, latestPlayed, addedUtc, userNames));
+                candidates.Add(BuildCandidate(item, libraryName, resolvedRules, CleanupReasonKind.NeverWatchedExceeded, latestPlayed, addedUtc, userNames, pendingEntriesById.GetValueOrDefault(item.Id)));
             }
         }
 
@@ -142,17 +160,52 @@ public sealed class CleanupEvaluationService
             items.Count,
             candidates.Count);
 
+        var orderedCandidates = candidates
+            .OrderBy(candidate => candidate.LibraryName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(candidate => candidate.SeriesName ?? candidate.ItemName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(candidate => candidate.SeasonName ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(candidate => candidate.ItemName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var normalizedDetailLimit = candidateDetailLimit.GetValueOrDefault(orderedCandidates.Length);
+        if (normalizedDetailLimit < 0)
+        {
+            normalizedDetailLimit = 0;
+        }
+
         return Task.FromResult(new CleanupEvaluationSummary
         {
             GeneratedAtUtc = now,
             ScannedItemCount = items.Count,
-            Candidates = candidates
-                .OrderBy(candidate => candidate.LibraryName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(candidate => candidate.SeriesName ?? candidate.ItemName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(candidate => candidate.SeasonName ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(candidate => candidate.ItemName, StringComparer.OrdinalIgnoreCase)
-                .ToArray(),
+            CandidateCount = orderedCandidates.Length,
+            CandidateDetailLimit = normalizedDetailLimit,
+            PendingCandidateCount = orderedCandidates.Count(candidate => candidate.IsPendingDeletion),
+            DuePendingCandidateCount = orderedCandidates.Count(candidate => candidate.PendingDeleteAfterUtc.HasValue && candidate.PendingDeleteAfterUtc.Value <= now),
+            CandidatesByLibrary = BuildBuckets(orderedCandidates, candidate => candidate.LibraryName, 12),
+            CandidatesByItemType = BuildBuckets(orderedCandidates, candidate => candidate.ItemType),
+            CandidatesByReason = BuildBuckets(orderedCandidates, candidate => candidate.Reason),
+            Candidates = orderedCandidates.Take(normalizedDetailLimit).ToArray(),
         });
+    }
+
+    private static CleanupCountBucket[] BuildBuckets(IEnumerable<CleanupCandidate> candidates, Func<CleanupCandidate, string?> selector, int? limit = null)
+    {
+        IEnumerable<CleanupCountBucket> buckets = candidates
+            .GroupBy(candidate => selector(candidate) ?? "Unknown")
+            .Select(group => new CleanupCountBucket
+            {
+                Label = group.Key,
+                Count = group.Count(),
+            })
+            .OrderByDescending(bucket => bucket.Count)
+            .ThenBy(bucket => bucket.Label, StringComparer.OrdinalIgnoreCase);
+
+        if (limit.HasValue)
+        {
+            buckets = buckets.Take(limit.Value);
+        }
+
+        return buckets.ToArray();
     }
 
     private static bool ShouldSkipItem(BaseItem item, PluginConfiguration configuration)
@@ -177,12 +230,13 @@ public sealed class CleanupEvaluationService
         var mediaKind = GetMediaKind(item);
         var libraryRule = FindMatchingLibraryRule(configuration.LibraryRules, libraryName, item.Path, item is Episode episode ? episode.Series?.Path : null);
 
-        var watchedDays = NormalizeThreshold(configuration.DeleteAfterWatchDays);
-        var watchedRuleName = "Global defaults";
-        var neverWatchedDays = NormalizeThreshold(configuration.DeleteNeverWatchedAfterDays);
-        var neverWatchedRuleName = "Global defaults";
-
-        ApplyRuleOverrides(GetGlobalTypeRules(configuration, mediaKind), "Global " + GetMediaKindLabel(mediaKind) + " rules", ref watchedDays, ref watchedRuleName, ref neverWatchedDays, ref neverWatchedRuleName);
+        var typeRules = GetGlobalTypeRules(configuration, mediaKind);
+        var watchedDays = NormalizeThreshold(typeRules?.DeleteAfterWatchDays ?? CleanupRuleConfiguration.Inherit)
+            ?? NormalizeThreshold(configuration.DeleteAfterWatchDays);
+        var watchedRuleName = GetMediaKindLabel(mediaKind) + " rules";
+        var neverWatchedDays = NormalizeThreshold(typeRules?.DeleteNeverWatchedAfterDays ?? CleanupRuleConfiguration.Inherit)
+            ?? NormalizeThreshold(configuration.DeleteNeverWatchedAfterDays);
+        var neverWatchedRuleName = GetMediaKindLabel(mediaKind) + " rules";
 
         if (libraryRule is not null)
         {
@@ -391,7 +445,8 @@ public sealed class CleanupEvaluationService
         CleanupReasonKind reasonKind,
         DateTime? latestPlayed,
         DateTime? addedUtc,
-        IReadOnlyList<string> userNames)
+        IReadOnlyList<string> userNames,
+        PendingDeletionEntry? pendingEntry)
     {
         var appliedRuleName = reasonKind == CleanupReasonKind.WatchedExceeded
             ? resolvedRules.WatchedRuleName
@@ -433,6 +488,9 @@ public sealed class CleanupEvaluationService
             SeriesTmdbId = item is Episode episodeForTmdb ? episodeForTmdb.Series?.GetProviderId(MetadataProvider.Tmdb) : null,
             SeriesTvdbId = item is Episode episodeForTvdb ? episodeForTvdb.Series?.GetProviderId(MetadataProvider.Tvdb) : null,
             SeriesImdbId = item is Episode episodeForImdb ? episodeForImdb.Series?.GetProviderId(MetadataProvider.Imdb) : null,
+            IsPendingDeletion = pendingEntry is not null,
+            PendingSinceUtc = pendingEntry?.FirstQualifiedUtc,
+            PendingDeleteAfterUtc = pendingEntry?.DeleteAfterUtc,
         };
     }
 

@@ -58,6 +58,19 @@ public sealed class CleanupCandidate
     public string? SeriesTvdbId { get; init; }
 
     public string? SeriesImdbId { get; init; }
+
+    public bool IsPendingDeletion { get; init; }
+
+    public DateTime? PendingSinceUtc { get; init; }
+
+    public DateTime? PendingDeleteAfterUtc { get; init; }
+}
+
+public sealed class CleanupCountBucket
+{
+    public string Label { get; init; } = string.Empty;
+
+    public int Count { get; init; }
 }
 
 public sealed class CleanupEvaluationSummary
@@ -66,7 +79,23 @@ public sealed class CleanupEvaluationSummary
 
     public int ScannedItemCount { get; init; }
 
-    public int CandidateCount => Candidates.Count;
+    public int CandidateCount { get; init; }
+
+    public int CandidateDetailLimit { get; init; }
+
+    public int PendingCandidateCount { get; init; }
+
+    public int DuePendingCandidateCount { get; init; }
+
+    public int DisplayedCandidateCount => Candidates.Count;
+
+    public bool IsCandidateListTruncated => CandidateCount > Candidates.Count;
+
+    public IReadOnlyList<CleanupCountBucket> CandidatesByLibrary { get; init; } = Array.Empty<CleanupCountBucket>();
+
+    public IReadOnlyList<CleanupCountBucket> CandidatesByItemType { get; init; } = Array.Empty<CleanupCountBucket>();
+
+    public IReadOnlyList<CleanupCountBucket> CandidatesByReason { get; init; } = Array.Empty<CleanupCountBucket>();
 
     public IReadOnlyList<CleanupCandidate> Candidates { get; init; } = Array.Empty<CleanupCandidate>();
 }
@@ -106,6 +135,8 @@ public sealed class CleanupExecutionResult
     public string Outcome { get; init; } = string.Empty;
 
     public string? Error { get; init; }
+
+    public DateTime? PendingDeleteAfterUtc { get; init; }
 }
 
 public sealed class CleanupExecutionSummary
@@ -126,5 +157,61 @@ public sealed class CleanupExecutionSummary
 
     public int SonarrUpdatedCount { get; init; }
 
+    public int QueuedCount { get; init; }
+
+    public int PendingCount { get; init; }
+
+    public int ResultCount { get; init; }
+
+    public int ResultDetailLimit { get; init; }
+
+    public int DisplayedResultCount => Results.Count;
+
+    public bool IsResultListTruncated => ResultCount > Results.Count;
+
     public IReadOnlyList<CleanupExecutionResult> Results { get; init; } = Array.Empty<CleanupExecutionResult>();
+}
+
+public sealed class PendingDeletionEntry
+{
+    public Guid ItemId { get; set; }
+
+    public string ItemName { get; set; } = string.Empty;
+
+    public string ItemType { get; set; } = string.Empty;
+
+    public string? LibraryName { get; set; }
+
+    public string? SeriesName { get; set; }
+
+    public string? SeasonName { get; set; }
+
+    public string? Path { get; set; }
+
+    public string Reason { get; set; } = string.Empty;
+
+    public string AppliedRuleName { get; set; } = string.Empty;
+
+    public DateTime FirstQualifiedUtc { get; set; }
+
+    public DateTime LastMatchedUtc { get; set; }
+
+    public DateTime DeleteAfterUtc { get; set; }
+}
+
+public sealed class PendingDeletionSummary
+{
+    public DateTime GeneratedAtUtc { get; init; }
+
+    public int GraceDays { get; init; }
+
+    public int EntryCount { get; init; }
+
+    public int DetailLimit { get; init; }
+
+    public int DisplayedEntryCount => Entries.Count;
+
+    public bool IsEntryListTruncated => EntryCount > Entries.Count;
+
+    public IReadOnlyList<PendingDeletionEntry> Entries { get; init; } = Array.Empty<PendingDeletionEntry>();
 }

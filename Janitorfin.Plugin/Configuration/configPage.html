@@ -2,798 +2,1031 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-                pageVersion: '20260324h'
+    <title>Janitorfin</title>
 </head>
 <body>
-    <div id="JanitorfinConfigPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs" data-require="emby-input,emby-button,emby-checkbox,emby-select">
+    <div id="JanitorfinConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
         <div data-role="content">
             <div class="content-primary">
-                <div id="navigationTabs" data-role="controlgroup" data-type="horizontal" class="localnav"></div>
+                <form id="JanitorfinConfigForm">
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Cleanup Options</h2></legend>
 
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                    <meta charset="utf-8">
-                    <title>Janitorfin</title>
-                </head>
-                <body>
-                    <div id="JanitorfinConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
-                        <div data-role="content">
-                            <div class="content-primary">
-                                <form id="JanitorfinConfigForm">
-                                    <fieldset class="verticalSection verticalSection-extrabottompadding">
-                                        <legend><h2>Cleanup Rules</h2></legend>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="DeleteAfterWatchDays">Delete watched media after days</label>
-                                            <input id="DeleteAfterWatchDays" name="DeleteAfterWatchDays" type="number" is="emby-input" min="-1" />
-                                            <div class="fieldDescription">Set to -1 to disable watched-item cleanup.</div>
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="DeleteNeverWatchedAfterDays">Delete never-watched media after days</label>
-                                            <input id="DeleteNeverWatchedAfterDays" name="DeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-1" />
-                                            <div class="fieldDescription">Set to -1 to disable never-watched cleanup.</div>
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="ProtectedTag">Protected tag</label>
-                                            <input id="ProtectedTag" name="ProtectedTag" type="text" is="emby-input" />
-                                            <div class="fieldDescription">Media with this Jellyfin tag will be skipped by cleanup.</div>
-                                        </div>
-
-                                        <div class="checkboxContainer checkboxContainer-withDescription">
-                                            <label class="emby-checkbox-label">
-                                                <input id="DryRun" name="DryRun" type="checkbox" is="emby-checkbox" />
-                                                <span>Dry run mode</span>
-                                            </label>
-                                            <div class="fieldDescription checkboxFieldDescription">Log intended actions without deleting media or changing Radarr or Sonarr monitoring.</div>
-                                        </div>
-                                    </fieldset>
-
-                                    <fieldset class="verticalSection verticalSection-extrabottompadding">
-                                        <legend><h2>Per-Type Overrides</h2></legend>
-
-                                        <div class="fieldDescription" style="margin-bottom: 1em;">Use -2 to inherit the global defaults above. Use -1 to disable a specific rule for that media type.</div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="MovieRulesDeleteAfterWatchDays">Movies: watched days</label>
-                                            <input id="MovieRulesDeleteAfterWatchDays" type="number" is="emby-input" min="-2" />
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="MovieRulesDeleteNeverWatchedAfterDays">Movies: never-watched days</label>
-                                            <input id="MovieRulesDeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-2" />
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteAfterWatchDays">Episodes: watched days</label>
-                                            <input id="EpisodeRulesDeleteAfterWatchDays" type="number" is="emby-input" min="-2" />
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteNeverWatchedAfterDays">Episodes: never-watched days</label>
-                                            <input id="EpisodeRulesDeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-2" />
-                                        </div>
-                                    </fieldset>
-
-                                    <fieldset class="verticalSection verticalSection-extrabottompadding">
-                                        <legend><h2>Radarr</h2></legend>
-
-                                        <div class="checkboxContainer checkboxContainer-withDescription">
-                                            <label class="emby-checkbox-label">
-                                                <input id="EnableRadarrIntegration" name="EnableRadarrIntegration" type="checkbox" is="emby-checkbox" />
-                                                <span>Enable Radarr integration</span>
-                                            </label>
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="RadarrServerUrl">Server URL</label>
-                                            <input id="RadarrServerUrl" name="RadarrServerUrl" type="text" is="emby-input" />
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="RadarrApiKey">API key</label>
-                                            <input id="RadarrApiKey" name="RadarrApiKey" type="password" is="emby-input" />
-                                        </div>
-
-                                        <div>
-                                            <button id="TestRadarrConnection" is="emby-button" type="button" class="raised emby-button">
-                                                <span>Test Radarr Connection</span>
-                                            </button>
-                                        </div>
-                                        <div id="RadarrTestResult" class="fieldDescription" style="margin-top: 0.75em;"></div>
-
-                                        <div class="checkboxContainer checkboxContainer-withDescription">
-                                            <label class="emby-checkbox-label">
-                                                <input id="UnmonitorRadarrOnDelete" name="UnmonitorRadarrOnDelete" type="checkbox" is="emby-checkbox" />
-                                                <span>Unmonitor movie after delete</span>
-                                            </label>
-                                        </div>
-                                    </fieldset>
-
-                                    <fieldset class="verticalSection verticalSection-extrabottompadding">
-                                        <legend><h2>Sonarr</h2></legend>
-
-                                        <div class="checkboxContainer checkboxContainer-withDescription">
-                                            <label class="emby-checkbox-label">
-                                                <input id="EnableSonarrIntegration" name="EnableSonarrIntegration" type="checkbox" is="emby-checkbox" />
-                                                <span>Enable Sonarr integration</span>
-                                            </label>
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="SonarrServerUrl">Server URL</label>
-                                            <input id="SonarrServerUrl" name="SonarrServerUrl" type="text" is="emby-input" />
-                                        </div>
-
-                                        <div class="inputContainer">
-                                            <label class="inputLabel inputLabelUnfocused" for="SonarrApiKey">API key</label>
-                                            <input id="SonarrApiKey" name="SonarrApiKey" type="password" is="emby-input" />
-                                        </div>
-
-                                        <div>
-                                            <button id="TestSonarrConnection" is="emby-button" type="button" class="raised emby-button">
-                                                <span>Test Sonarr Connection</span>
-                                            </button>
-                                        </div>
-                                        <div id="SonarrTestResult" class="fieldDescription" style="margin-top: 0.75em;"></div>
-
-                                        <div class="checkboxContainer checkboxContainer-withDescription">
-                                            <label class="emby-checkbox-label">
-                                                <input id="UnmonitorSonarrOnDelete" name="UnmonitorSonarrOnDelete" type="checkbox" is="emby-checkbox" />
-                                                <span>Unmonitor series or episodes after delete</span>
-                                            </label>
-                                        </div>
-
-                                        <div class="selectContainer">
-                                            <label class="selectLabel" for="SonarrUnmonitorScope">Sonarr unmonitor scope</label>
-                                            <select id="SonarrUnmonitorScope" is="emby-select">
-                                                <option value="0">Episode</option>
-                                                <option value="1">Season</option>
-                                                <option value="2">Series</option>
-                                            </select>
-                                            <div class="fieldDescription">Episode is the safest default. Season and Series broaden the change to avoid reacquisition for larger groups.</div>
-                                        </div>
-                                    </fieldset>
-
-                                    <div>
-                                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-                                            <span>Save</span>
-                                        </button>
-                                    </div>
-
-                                    <fieldset class="verticalSection verticalSection-extrabottompadding" style="margin-top: 1.5em;">
-                                        <legend><h2>Inline Preview</h2></legend>
-
-                                        <div style="display: flex; gap: 0.75em; flex-wrap: wrap;">
-                                            <button id="RefreshInlinePreviewButton" is="emby-button" type="button" class="raised emby-button">
-                                                <span>Refresh Preview</span>
-                                            </button>
-                                            <button id="RunInlineDryRunButton" is="emby-button" type="button" class="raised emby-button">
-                                                <span>Run Dry Run Now</span>
-                                            </button>
-                                            <button id="RunInlineLiveCleanupButton" is="emby-button" type="button" class="raised emby-button">
-                                                <span>Run Cleanup Now</span>
-                                            </button>
-                                        </div>
-
-                                        <div id="InlineExecutionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
-                                        <div id="InlinePreviewSummary" class="fieldDescription" style="margin-top: 1em;"></div>
-                                        <div id="InlinePreviewResults" style="margin-top: 1em;"></div>
-                                        <pre id="InlineDebugDump" style="margin-top: 1em; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.4; padding: 0.75em; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.5rem; background: rgba(0,0,0,0.2);"></pre>
-                                    </fieldset>
-                                </form>
-                            </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="ProtectedTag">Protected tag</label>
+                            <input id="ProtectedTag" name="ProtectedTag" type="text" is="emby-input" />
+                            <div class="fieldDescription">Media with this Jellyfin tag will be skipped by cleanup.</div>
                         </div>
 
-                        <script type="text/javascript">
-                            var JanitorfinConfig = {
-                                pluginUniqueId: '8eab83a3-4377-4036-8b37-68bc4767bc9e',
-                                pageVersion: '20260324i'
-                            };
-                            var currentPluginConfig = null;
-
-                            function postJson(url) {
-                                return ApiClient.fetch({
-                                    url: ApiClient.getUrl(url),
-                                    type: 'POST',
-                                    dataType: 'json',
-                                    contentType: 'application/json',
-                                    headers: {
-                                        accept: 'application/json'
-                                    },
-                                    data: '{}'
-                                }).then(function (response) {
-                                    if (response == null) {
-                                        return response;
-                                    }
-
-                                    if (typeof response === 'string') {
-                                        try {
-                                            return JSON.parse(response);
-                                        } catch (error) {
-                                            return { raw: response };
-                                        }
-                                    }
-
-                                    if (typeof response.json === 'function') {
-                                        return response.json();
-                                    }
-
-                                    return response;
-                                }).catch(function (error) {
-                                    return normalizeRejectedResponse(error).then(function (normalized) {
-                                        return Promise.reject(normalized);
-                                    });
-                                });
-                            }
-
-                            function normalizeRule(rule) {
-                                rule = rule || {};
-                                return {
-                                    DeleteAfterWatchDays: typeof rule.DeleteAfterWatchDays === 'number' ? rule.DeleteAfterWatchDays : -2,
-                                    DeleteNeverWatchedAfterDays: typeof rule.DeleteNeverWatchedAfterDays === 'number' ? rule.DeleteNeverWatchedAfterDays : -2
-                                };
-                            }
-
-                            function normalizeLibraryRule(rule) {
-                                rule = rule || {};
-                                return {
-                                    LibraryName: rule.LibraryName || '',
-                                    LibraryPathPrefix: rule.LibraryPathPrefix || '',
-                                    DefaultRules: normalizeRule(rule.DefaultRules),
-                                    MovieRules: normalizeRule(rule.MovieRules),
-                                    EpisodeRules: normalizeRule(rule.EpisodeRules),
-                                    VideoRules: normalizeRule(rule.VideoRules)
-                                };
-                            }
-
-                            function normalizeConfig(config) {
-                                config.MovieRules = normalizeRule(config.MovieRules);
-                                config.EpisodeRules = normalizeRule(config.EpisodeRules);
-                                config.VideoRules = normalizeRule(config.VideoRules);
-                                config.LibraryRules = (config.LibraryRules || []).map(normalizeLibraryRule);
-                                if (typeof config.SonarrUnmonitorScope !== 'number') {
-                                    config.SonarrUnmonitorScope = 0;
-                                }
-                                return config;
-                            }
-
-                            function setRuleInputs(prefix, rule) {
-                                document.querySelector('#' + prefix + 'DeleteAfterWatchDays').value = rule.DeleteAfterWatchDays;
-                                document.querySelector('#' + prefix + 'DeleteNeverWatchedAfterDays').value = rule.DeleteNeverWatchedAfterDays;
-                            }
-
-                            function getRuleInputs(prefix) {
-                                return {
-                                    DeleteAfterWatchDays: parseInt(document.querySelector('#' + prefix + 'DeleteAfterWatchDays').value || '-2', 10),
-                                    DeleteNeverWatchedAfterDays: parseInt(document.querySelector('#' + prefix + 'DeleteNeverWatchedAfterDays').value || '-2', 10)
-                                };
-                            }
-
-                            function collectConfigFromForm() {
-                                if (!currentPluginConfig) {
-                                    throw new Error('Janitorfin configuration has not finished loading yet.');
-                                }
-
-                                var config = JSON.parse(JSON.stringify(currentPluginConfig));
-                                config = normalizeConfig(config);
-                                config.DeleteAfterWatchDays = parseInt(document.querySelector('#DeleteAfterWatchDays').value || '-1', 10);
-                                config.DeleteNeverWatchedAfterDays = parseInt(document.querySelector('#DeleteNeverWatchedAfterDays').value || '-1', 10);
-                                config.MovieRules = getRuleInputs('MovieRules');
-                                config.EpisodeRules = getRuleInputs('EpisodeRules');
-                                config.ProtectedTag = document.querySelector('#ProtectedTag').value;
-                                config.DryRun = document.querySelector('#DryRun').checked;
-                                config.EnableRadarrIntegration = document.querySelector('#EnableRadarrIntegration').checked;
-                                config.RadarrServerUrl = document.querySelector('#RadarrServerUrl').value;
-                                config.RadarrApiKey = document.querySelector('#RadarrApiKey').value;
-                                config.UnmonitorRadarrOnDelete = document.querySelector('#UnmonitorRadarrOnDelete').checked;
-                                config.EnableSonarrIntegration = document.querySelector('#EnableSonarrIntegration').checked;
-                                config.SonarrServerUrl = document.querySelector('#SonarrServerUrl').value;
-                                config.SonarrApiKey = document.querySelector('#SonarrApiKey').value;
-                                config.UnmonitorSonarrOnDelete = document.querySelector('#UnmonitorSonarrOnDelete').checked;
-                                config.SonarrUnmonitorScope = parseInt(document.querySelector('#SonarrUnmonitorScope').value || '0', 10);
-                                return config;
-                            }
-
-                            function normalizeRejectedResponse(error) {
-                                if (!error) {
-                                    return Promise.resolve({ message: 'Unknown request failure.' });
-                                }
-
-                                if (typeof error === 'string') {
-                                    return Promise.resolve({ message: error, raw: error });
-                                }
-
-                                if (error.message || error.raw) {
-                                    return Promise.resolve(error);
-                                }
-
-                                if (typeof error.text === 'function') {
-                                    var status = error.status;
-                                    var statusText = error.statusText;
-                                    var applicationError = error.headers && typeof error.headers.get === 'function'
-                                        ? error.headers.get('X-Application-Error-Code')
-                                        : null;
-
-                                    return error.text().then(function (text) {
-                                        var message = text || applicationError || statusText || ('Request failed with status ' + status + '.');
-
-                                        try {
-                                            var parsed = text ? JSON.parse(text) : null;
-                                            if (parsed && typeof parsed === 'object') {
-                                                if (!parsed.message && !parsed.Message) {
-                                                    parsed.message = message;
-                                                }
-
-                                                if (status && !parsed.status) {
-                                                    parsed.status = status;
-                                                }
-
-                                                if (statusText && !parsed.statusText) {
-                                                    parsed.statusText = statusText;
-                                                }
-
-                                                if (applicationError && !parsed.applicationError) {
-                                                    parsed.applicationError = applicationError;
-                                                }
-
-                                                if (text && !parsed.raw) {
-                                                    parsed.raw = text;
-                                                }
-
-                                                return parsed;
-                                            }
-                                        } catch (parseError) {
-                                        }
-
-                                        return {
-                                            message: message,
-                                            status: status,
-                                            statusText: statusText,
-                                            applicationError: applicationError,
-                                            raw: text
-                                        };
-                                    }).catch(function () {
-                                        return {
-                                            message: applicationError || statusText || ('Request failed with status ' + (status || 'unknown') + '.'),
-                                            status: status,
-                                            statusText: statusText,
-                                            applicationError: applicationError
-                                        };
-                                    });
-                                }
-
-                                return Promise.resolve(error);
-                            }
-
-                            function fetchJson(url, method, body) {
-                                var options = {
-                                    url: ApiClient.getUrl(url),
-                                    type: method || 'GET',
-                                    dataType: 'json',
-                                    contentType: 'application/json',
-                                    headers: {
-                                        accept: 'application/json'
-                                    }
-                                };
-
-                                if ((method || 'GET').toUpperCase() !== 'GET') {
-                                    options.data = JSON.stringify(body || {});
-                                }
-
-                                return ApiClient.fetch(options).then(function (response) {
-                                    if (response == null) {
-                                        return response;
-                                    }
-
-                                    if (typeof response === 'string') {
-                                        try {
-                                            return JSON.parse(response);
-                                        } catch (error) {
-                                            return { raw: response };
-                                        }
-                                    }
-
-                                    if (typeof response.json === 'function') {
-                                        return response.json();
-                                    }
-
-                                    if (typeof response.text === 'function') {
-                                        return response.text().then(function (text) {
-                                            if (!text) {
-                                                return {};
-                                            }
-
-                                            try {
-                                                return JSON.parse(text);
-                                            } catch (error) {
-                                                return { raw: text };
-                                            }
-                                        });
-                                    }
-
-                                    return response;
-                                }).catch(function (error) {
-                                    return normalizeRejectedResponse(error).then(function (normalized) {
-                                        return Promise.reject(normalized);
-                                    });
-                                });
-                            }
-
-                            function getValue(object, camelName, pascalName) {
-                                if (!object) {
-                                    return undefined;
-                                }
-
-                                if (Object.prototype.hasOwnProperty.call(object, camelName)) {
-                                    return object[camelName];
-                                }
-
-                                if (Object.prototype.hasOwnProperty.call(object, pascalName)) {
-                                    return object[pascalName];
-                                }
-
-                                return undefined;
-                            }
-
-                            function escapeHtml(value) {
-                                return String(value || '')
-                                    .replace(/&/g, '&amp;')
-                                    .replace(/</g, '&lt;')
-                                    .replace(/>/g, '&gt;');
-                            }
-
-                            function formatDate(value) {
-                                if (!value) {
-                                    return 'n/a';
-                                }
-
-                                var date = new Date(value);
-                                return isNaN(date.getTime()) ? value : date.toLocaleString();
-                            }
-
-                            function formatError(error, fallbackMessage) {
-                                if (!error) {
-                                    return fallbackMessage;
-                                }
-
-                                if (typeof error === 'string') {
-                                    return error;
-                                }
-
-                                if (error.message) {
-                                    return error.message;
-                                }
-
-                                if (error.raw) {
-                                    return error.raw;
-                                }
-
-                                try {
-                                    return JSON.stringify(error);
-                                } catch (jsonError) {
-                                    return fallbackMessage;
-                                }
-                            }
-
-                            function stringifyForDisplay(value) {
-                                if (value == null) {
-                                    return '';
-                                }
-
-                                if (typeof value === 'string') {
-                                    return value;
-                                }
-
-                                try {
-                                    return JSON.stringify(value, null, 2);
-                                } catch (error) {
-                                    return String(value);
-                                }
-                            }
-
-                            function setInlineDebugDump(label, value) {
-                                var debugElement = document.querySelector('#InlineDebugDump');
-                                if (!debugElement) {
-                                    return;
-                                }
-
-                                var text = stringifyForDisplay(value);
-                                debugElement.textContent = label + (text ? '\n' + text : '');
-                            }
-
-                            function formatEpisodeCode(candidate) {
-                                var seasonNumber = getValue(candidate, 'seasonNumber', 'SeasonNumber');
-                                var episodeNumber = getValue(candidate, 'episodeNumber', 'EpisodeNumber');
-
-                                if (seasonNumber == null || episodeNumber == null) {
-                                    return '';
-                                }
-
-                                return 'S' + String(seasonNumber).padStart(2, '0') + 'E' + String(episodeNumber).padStart(2, '0');
-                            }
-
-                            function renderInlinePreview(result) {
-                                var summary = document.querySelector('#InlinePreviewSummary');
-                                var container = document.querySelector('#InlinePreviewResults');
-                                setInlineDebugDump('Preview payload', result);
-
-                                var scannedItemCount = getValue(result, 'scannedItemCount', 'ScannedItemCount') || 0;
-                                var candidateCount = getValue(result, 'candidateCount', 'CandidateCount') || 0;
-                                var candidates = getValue(result, 'candidates', 'Candidates') || [];
-
-                                if (!Array.isArray(candidates)) {
-                                    candidates = [];
-                                }
-
-                                if (!scannedItemCount && !candidateCount && !candidates.length) {
-                                    var rawPreview = getValue(result, 'raw', 'Raw');
-                                    if (rawPreview) {
-                                        summary.textContent = rawPreview;
-                                        container.innerHTML = '';
-                                        return;
-                                    }
-
-                                    summary.textContent = 'Unexpected preview response: ' + stringifyForDisplay(result);
-                                    container.innerHTML = '';
-                                    return;
-                                }
-
-                                summary.textContent = 'Scanned ' + scannedItemCount + ' items. Found ' + candidateCount + ' cleanup candidates.';
-
-                                if (!candidates.length) {
-                                    container.innerHTML = '<div class="fieldDescription">No cleanup candidates matched the current rules.</div>';
-                                    return;
-                                }
-
-                                container.innerHTML = candidates.map(function (candidate) {
-                                    var labels = [];
-                                    var libraryName = getValue(candidate, 'libraryName', 'LibraryName');
-                                    var seriesName = getValue(candidate, 'seriesName', 'SeriesName');
-                                    var seasonName = getValue(candidate, 'seasonName', 'SeasonName');
-                                    var appliedRuleName = getValue(candidate, 'appliedRuleName', 'AppliedRuleName');
-                                    var playedByUsers = getValue(candidate, 'playedByUsers', 'PlayedByUsers') || [];
-                                    var itemName = getValue(candidate, 'itemName', 'ItemName') || '';
-                                    var itemType = getValue(candidate, 'itemType', 'ItemType') || '';
-                                    var reason = getValue(candidate, 'reason', 'Reason') || '';
-                                    var dateAddedUtc = getValue(candidate, 'dateAddedUtc', 'DateAddedUtc');
-                                    var lastPlayedDateUtc = getValue(candidate, 'lastPlayedDateUtc', 'LastPlayedDateUtc');
-                                    var path = getValue(candidate, 'path', 'Path');
-
-                                    if (libraryName) {
-                                        labels.push('Library: ' + escapeHtml(libraryName));
-                                    }
-                                    if (seriesName) {
-                                        labels.push('Series: ' + escapeHtml(seriesName));
-                                    }
-                                    if (seasonName) {
-                                        labels.push('Season: ' + escapeHtml(seasonName));
-                                    }
-                                    if (formatEpisodeCode(candidate)) {
-                                        labels.push('Episode: ' + escapeHtml(formatEpisodeCode(candidate)));
-                                    }
-                                    if (appliedRuleName) {
-                                        labels.push('Rule: ' + escapeHtml(appliedRuleName));
-                                    }
-                                    if (playedByUsers.length) {
-                                        labels.push('Played by: ' + escapeHtml(playedByUsers.join(', ')));
-                                    }
-
-                                    return [
-                                        '<div class="listItem" style="padding: 1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem; margin-bottom: 0.75rem;">',
-                                        '<div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">',
-                                        '<div>',
-                                        '<div style="font-weight: 600;">' + escapeHtml(itemName) + '</div>',
-                                        '<div class="fieldDescription">' + escapeHtml(itemType) + '</div>',
-                                        '</div>',
-                                        '<div class="fieldDescription">' + escapeHtml(reason) + '</div>',
-                                        '</div>',
-                                        labels.length ? '<div class="fieldDescription" style="margin-top: 0.5rem;">' + labels.join(' | ') + '</div>' : '',
-                                        '<div class="fieldDescription" style="margin-top: 0.5rem;">Added: ' + escapeHtml(formatDate(dateAddedUtc)) + ' | Last played: ' + escapeHtml(formatDate(lastPlayedDateUtc)) + '</div>',
-                                        path ? '<div class="fieldDescription" style="margin-top: 0.5rem; word-break: break-all;">' + escapeHtml(path) + '</div>' : '',
-                                        '</div>'
-                                    ].join('');
-                                }).join('');
-                            }
-
-                            function renderInlineExecutionSummary(result) {
-                                var summary = document.querySelector('#InlineExecutionSummary');
-                                setInlineDebugDump('Execution payload', result);
-
-                                var raw = getValue(result, 'raw', 'Raw');
-                                var hasStructuredSummary = getValue(result, 'candidateCount', 'CandidateCount') != null
-                                    || getValue(result, 'deletedCount', 'DeletedCount') != null
-                                    || getValue(result, 'failedCount', 'FailedCount') != null
-                                    || getValue(result, 'dryRun', 'DryRun') != null;
-
-                                if (raw) {
-                                    summary.textContent = raw;
-                                    return;
-                                }
-
-                                if (!hasStructuredSummary) {
-                                    summary.textContent = 'Unexpected execution response: ' + stringifyForDisplay(result);
-                                    return;
-                                }
-
-                                summary.textContent = [
-                                    getValue(result, 'dryRun', 'DryRun') ? 'Dry run complete.' : 'Cleanup run complete.',
-                                    'Candidates: ' + (getValue(result, 'candidateCount', 'CandidateCount') || 0),
-                                    'Deleted: ' + (getValue(result, 'deletedCount', 'DeletedCount') || 0),
-                                    'Failed: ' + (getValue(result, 'failedCount', 'FailedCount') || 0),
-                                    'Radarr updated: ' + (getValue(result, 'radarrUpdatedCount', 'RadarrUpdatedCount') || 0),
-                                    'Sonarr updated: ' + (getValue(result, 'sonarrUpdatedCount', 'SonarrUpdatedCount') || 0)
-                                ].join(' ');
-                            }
-
-                            function loadInlinePreview(useFormValues) {
-                                var method = 'GET';
-                                var body;
-                                var url = 'Janitorfin/Preview';
-
-                                if (useFormValues) {
-                                    try {
-                                        body = collectConfigFromForm();
-                                        method = 'POST';
-                                        url = 'Janitorfin/Preview/WithConfiguration';
-                                    } catch (error) {
-                                        setInlineDebugDump('Preview error', formatError(error, 'Preview request failed.'));
-                                        document.querySelector('#InlinePreviewSummary').textContent = formatError(error, 'Preview request failed.');
-                                        document.querySelector('#InlinePreviewResults').innerHTML = '';
-                                        return;
-                                    }
-                                }
-
-                                Dashboard.showLoadingMsg();
-                                fetchJson(url, method, body).then(function (result) {
-                                    renderInlinePreview(result);
-                                    Dashboard.hideLoadingMsg();
-                                }).catch(function (error) {
-                                    setInlineDebugDump('Preview error', error);
-                                    document.querySelector('#InlinePreviewSummary').textContent = formatError(error, 'Preview request failed.');
-                                    document.querySelector('#InlinePreviewResults').innerHTML = '';
-                                    Dashboard.hideLoadingMsg();
-                                });
-                            }
-
-                            function runInlineDryRun() {
-                                var config;
-
-                                try {
-                                    config = collectConfigFromForm();
-                                } catch (error) {
-                                    setInlineDebugDump('Dry run error', formatError(error, 'Dry run execution failed.'));
-                                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Dry run execution failed.');
-                                    return;
-                                }
-
-                                document.querySelector('#InlineExecutionSummary').textContent = 'Running dry run...';
-                                Dashboard.showLoadingMsg();
-                                fetchJson('Janitorfin/Execute/WithConfiguration?dryRun=true', 'POST', config).then(function (result) {
-                                    renderInlineExecutionSummary(result);
-                                    loadInlinePreview(true);
-                                }).catch(function (error) {
-                                    setInlineDebugDump('Dry run error', error);
-                                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Dry run execution failed.');
-                                    Dashboard.hideLoadingMsg();
-                                });
-                            }
-
-                            function runInlineLiveCleanup() {
-                                var config;
-
-                                try {
-                                    config = collectConfigFromForm();
-                                } catch (error) {
-                                    setInlineDebugDump('Cleanup error', formatError(error, 'Cleanup execution failed.'));
-                                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Cleanup execution failed.');
-                                    return;
-                                }
-
-                                Dashboard.confirm({
-                                    title: 'Run Janitorfin Cleanup',
-                                    message: 'This will delete matching media immediately using the current form values.'
-                                }).then(function () {
-                                    document.querySelector('#InlineExecutionSummary').textContent = 'Running cleanup...';
-                                    Dashboard.showLoadingMsg();
-                                    fetchJson('Janitorfin/Execute/WithConfiguration?dryRun=false', 'POST', config).then(function (result) {
-                                        renderInlineExecutionSummary(result);
-                                        loadInlinePreview(true);
-                                    }).catch(function (error) {
-                                        setInlineDebugDump('Cleanup error', error);
-                                        document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Cleanup execution failed.');
-                                        Dashboard.hideLoadingMsg();
-                                    });
-                                });
-                            }
-
-                            document.querySelector('#JanitorfinConfigPage').addEventListener('pageshow', function () {
-                                Dashboard.showLoadingMsg();
-                                ApiClient.getPluginConfiguration(JanitorfinConfig.pluginUniqueId).then(function (config) {
-                                    config = normalizeConfig(config);
-                                    currentPluginConfig = config;
-                                    document.querySelector('#DeleteAfterWatchDays').value = config.DeleteAfterWatchDays;
-                                    document.querySelector('#DeleteNeverWatchedAfterDays').value = config.DeleteNeverWatchedAfterDays;
-                                    setRuleInputs('MovieRules', config.MovieRules);
-                                    setRuleInputs('EpisodeRules', config.EpisodeRules);
-                                    document.querySelector('#ProtectedTag').value = config.ProtectedTag || '';
-                                    document.querySelector('#DryRun').checked = config.DryRun;
-                                    document.querySelector('#EnableRadarrIntegration').checked = config.EnableRadarrIntegration;
-                                    document.querySelector('#RadarrServerUrl').value = config.RadarrServerUrl || '';
-                                    document.querySelector('#RadarrApiKey').value = config.RadarrApiKey || '';
-                                    document.querySelector('#UnmonitorRadarrOnDelete').checked = config.UnmonitorRadarrOnDelete;
-                                    document.querySelector('#EnableSonarrIntegration').checked = config.EnableSonarrIntegration;
-                                    document.querySelector('#SonarrServerUrl').value = config.SonarrServerUrl || '';
-                                    document.querySelector('#SonarrApiKey').value = config.SonarrApiKey || '';
-                                    document.querySelector('#UnmonitorSonarrOnDelete').checked = config.UnmonitorSonarrOnDelete;
-                                    document.querySelector('#SonarrUnmonitorScope').value = String(config.SonarrUnmonitorScope);
-                                    setInlineDebugDump('Page loaded', { version: JanitorfinConfig.pageVersion });
-                                    Dashboard.hideLoadingMsg();
-                                    loadInlinePreview();
-                                });
-                            });
-
-                            document.querySelector('#RefreshInlinePreviewButton').addEventListener('click', function () {
-                                loadInlinePreview(true);
-                            });
-
-                            document.querySelector('#RunInlineDryRunButton').addEventListener('click', function () {
-                                runInlineDryRun();
-                            });
-
-                            document.querySelector('#RunInlineLiveCleanupButton').addEventListener('click', function () {
-                                runInlineLiveCleanup();
-                            });
-
-                            document.querySelector('#TestRadarrConnection').addEventListener('click', function () {
-                                var resultElement = document.querySelector('#RadarrTestResult');
-                                Dashboard.showLoadingMsg();
-                                postJson('Janitorfin/Test/Radarr').then(function (result) {
-                                    resultElement.textContent = result.message || result.Message || 'Radarr connection test completed.';
-                                    Dashboard.hideLoadingMsg();
-                                }).catch(function (error) {
-                                    resultElement.textContent = formatError(error, 'Radarr connection test failed.');
-                                    Dashboard.hideLoadingMsg();
-                                });
-                            });
-
-                            document.querySelector('#TestSonarrConnection').addEventListener('click', function () {
-                                var resultElement = document.querySelector('#SonarrTestResult');
-                                Dashboard.showLoadingMsg();
-                                postJson('Janitorfin/Test/Sonarr').then(function (result) {
-                                    resultElement.textContent = result.message || result.Message || 'Sonarr connection test completed.';
-                                    Dashboard.hideLoadingMsg();
-                                }).catch(function (error) {
-                                    resultElement.textContent = formatError(error, 'Sonarr connection test failed.');
-                                    Dashboard.hideLoadingMsg();
-                                });
-                            });
-
-                            document.querySelector('#JanitorfinConfigForm').addEventListener('submit', function (e) {
-                                Dashboard.showLoadingMsg();
-                                Promise.resolve().then(function () {
-                                    var config;
-
-                                    try {
-                                        config = collectConfigFromForm();
-                                    } catch (error) {
-                                        Dashboard.hideLoadingMsg();
-                                        window.alert('Configuration is invalid: ' + formatError(error, 'Unknown configuration error.'));
-                                        return;
-                                    }
-
-                                    ApiClient.updatePluginConfiguration(JanitorfinConfig.pluginUniqueId, config).then(function (result) {
-                                        currentPluginConfig = normalizeConfig(config);
-                                        Dashboard.processPluginConfigurationUpdateResult(result);
-                                    });
-                                });
-
-                                e.preventDefault();
-                                return false;
-                            });
-                        </script>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="KeepFavorites" name="KeepFavorites" type="checkbox" is="emby-checkbox" />
+                                <span>Keep favorites</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">Skip any item that is marked as a favorite by any Jellyfin user.</div>
+                        </div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="DryRun" name="DryRun" type="checkbox" is="emby-checkbox" />
+                                <span>Dry run mode</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">Log intended actions without deleting media or changing Radarr or Sonarr monitoring.</div>
+                        </div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnablePendingDeletion" name="EnablePendingDeletion" type="checkbox" is="emby-checkbox" />
+                                <span>Stage deletions before removing media</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">When enabled, Janitorfin queues matching items first and only deletes them after the grace period passes without new activity.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="PendingDeletionGraceDays">Pending deletion grace days</label>
+                            <input id="PendingDeletionGraceDays" name="PendingDeletionGraceDays" type="number" is="emby-input" min="0" />
+                            <div class="fieldDescription">Items stay on the pending list for this many days before Janitorfin will delete them on a later run.</div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Movie Rules</h2></legend>
+
+                        <div class="fieldDescription" style="margin-bottom: 1em;">Use -1 to disable a specific movie cleanup rule.</div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MovieRulesDeleteAfterWatchDays">Movies: watched days</label>
+                            <input id="MovieRulesDeleteAfterWatchDays" type="number" is="emby-input" min="-1" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="MovieRulesDeleteNeverWatchedAfterDays">Movies: never-watched days</label>
+                            <input id="MovieRulesDeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-1" />
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Episode Rules</h2></legend>
+
+                        <div class="fieldDescription" style="margin-bottom: 1em;">Use -1 to disable a specific episode cleanup rule.</div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteAfterWatchDays">Episodes: watched days</label>
+                            <input id="EpisodeRulesDeleteAfterWatchDays" type="number" is="emby-input" min="-1" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="EpisodeRulesDeleteNeverWatchedAfterDays">Episodes: never-watched days</label>
+                            <input id="EpisodeRulesDeleteNeverWatchedAfterDays" type="number" is="emby-input" min="-1" />
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Radarr</h2></legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableRadarrIntegration" name="EnableRadarrIntegration" type="checkbox" is="emby-checkbox" />
+                                <span>Enable Radarr integration</span>
+                            </label>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="RadarrServerUrl">Server URL</label>
+                            <input id="RadarrServerUrl" name="RadarrServerUrl" type="text" is="emby-input" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="RadarrApiKey">API key</label>
+                            <input id="RadarrApiKey" name="RadarrApiKey" type="password" is="emby-input" />
+                        </div>
+
+                        <div>
+                            <button id="TestRadarrConnection" is="emby-button" type="button" class="raised emby-button">
+                                <span>Test Radarr Connection</span>
+                            </button>
+                        </div>
+                        <div id="RadarrTestResult" class="fieldDescription" style="margin-top: 0.75em;"></div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="UnmonitorRadarrOnDelete" name="UnmonitorRadarrOnDelete" type="checkbox" is="emby-checkbox" />
+                                <span>Unmonitor movie after delete</span>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Sonarr</h2></legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableSonarrIntegration" name="EnableSonarrIntegration" type="checkbox" is="emby-checkbox" />
+                                <span>Enable Sonarr integration</span>
+                            </label>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="SonarrServerUrl">Server URL</label>
+                            <input id="SonarrServerUrl" name="SonarrServerUrl" type="text" is="emby-input" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="SonarrApiKey">API key</label>
+                            <input id="SonarrApiKey" name="SonarrApiKey" type="password" is="emby-input" />
+                        </div>
+
+                        <div>
+                            <button id="TestSonarrConnection" is="emby-button" type="button" class="raised emby-button">
+                                <span>Test Sonarr Connection</span>
+                            </button>
+                        </div>
+                        <div id="SonarrTestResult" class="fieldDescription" style="margin-top: 0.75em;"></div>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="UnmonitorSonarrOnDelete" name="UnmonitorSonarrOnDelete" type="checkbox" is="emby-checkbox" />
+                                <span>Unmonitor series or episodes after delete</span>
+                            </label>
+                        </div>
+
+                        <div class="selectContainer">
+                            <label class="selectLabel" for="SonarrUnmonitorScope">Sonarr unmonitor scope</label>
+                            <select id="SonarrUnmonitorScope" is="emby-select">
+                                <option value="0">Episode</option>
+                                <option value="1">Season</option>
+                                <option value="2">Series</option>
+                            </select>
+                            <div class="fieldDescription">Episode is the safest default. Season and Series broaden the change to avoid reacquisition for larger groups.</div>
+                        </div>
+                    </fieldset>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
                     </div>
-                </body>
-                </html>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding" style="margin-top: 1.5em;">
+                        <legend><h2>Inline Preview</h2></legend>
+
+                        <div class="fieldDescription" style="margin-bottom: 1em;">
+                            Preview responses now return aggregate counts plus the first 200 matching items, which keeps the page responsive even when thousands of candidates match.
+                        </div>
+
+                        <div style="display: flex; gap: 0.75em; flex-wrap: wrap;">
+                            <button id="RefreshInlinePreviewButton" is="emby-button" type="button" class="raised emby-button">
+                                <span>Refresh Preview</span>
+                            </button>
+                            <button id="RunInlineDryRunButton" is="emby-button" type="button" class="raised emby-button">
+                                <span>Run Dry Run Now</span>
+                            </button>
+                            <button id="RunInlineLiveCleanupButton" is="emby-button" type="button" class="raised emby-button">
+                                <span>Run Cleanup Now</span>
+                            </button>
+                        </div>
+
+                        <div id="InlineExecutionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
+                        <div id="InlinePreviewSummary" class="fieldDescription" style="margin-top: 1em;"></div>
+                        <div id="InlinePreviewResults" style="margin-top: 1em;"></div>
+                        <pre id="InlineDebugDump" style="margin-top: 1em; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.4; padding: 0.75em; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.5rem; background: rgba(0,0,0,0.2);"></pre>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Pending Deletions</h2></legend>
+
+                        <div class="fieldDescription" style="margin-bottom: 1em;">
+                            This list shows items already staged for deletion. If they keep matching the rules until their deadline, the next live cleanup run will remove them.
+                        </div>
+
+                        <div>
+                            <button id="RefreshPendingDeletionButton" is="emby-button" type="button" class="raised emby-button">
+                                <span>Refresh Pending List</span>
+                            </button>
+                        </div>
+
+                        <div id="PendingDeletionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
+                        <div id="PendingDeletionResults" style="margin-top: 1em;"></div>
+                    </fieldset>
+                </form>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            var JanitorfinConfig = {
+                pluginUniqueId: '8eab83a3-4377-4036-8b37-68bc4767bc9e',
+                pageVersion: '20260326a'
+            };
+            var currentPluginConfig = null;
+
+            function postJson(url) {
+                return ApiClient.fetch({
+                    url: ApiClient.getUrl(url),
+                    type: 'POST',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    headers: {
+                        accept: 'application/json'
+                    },
+                    data: '{}'
+                }).then(function (response) {
+                    return normalizeResponse(response);
+                }).catch(function (error) {
+                    return normalizeRejectedResponse(error).then(function (normalized) {
+                        return Promise.reject(normalized);
+                    });
+                });
+            }
+
+            function normalizeRule(rule) {
+                rule = rule || {};
+                return {
+                    DeleteAfterWatchDays: typeof rule.DeleteAfterWatchDays === 'number' ? rule.DeleteAfterWatchDays : -2,
+                    DeleteNeverWatchedAfterDays: typeof rule.DeleteNeverWatchedAfterDays === 'number' ? rule.DeleteNeverWatchedAfterDays : -2
+                };
+            }
+
+            function normalizeLibraryRule(rule) {
+                rule = rule || {};
+                return {
+                    LibraryName: rule.LibraryName || '',
+                    LibraryPathPrefix: rule.LibraryPathPrefix || '',
+                    DefaultRules: normalizeRule(rule.DefaultRules),
+                    MovieRules: normalizeRule(rule.MovieRules),
+                    EpisodeRules: normalizeRule(rule.EpisodeRules),
+                    VideoRules: normalizeRule(rule.VideoRules)
+                };
+            }
+
+            function normalizeConfig(config) {
+                config.MovieRules = normalizeRule(config.MovieRules);
+                config.EpisodeRules = normalizeRule(config.EpisodeRules);
+                config.VideoRules = normalizeRule(config.VideoRules);
+                config.LibraryRules = (config.LibraryRules || []).map(normalizeLibraryRule);
+                if (typeof config.KeepFavorites !== 'boolean') {
+                    config.KeepFavorites = true;
+                }
+                if (typeof config.EnablePendingDeletion !== 'boolean') {
+                    config.EnablePendingDeletion = true;
+                }
+                if (typeof config.PendingDeletionGraceDays !== 'number') {
+                    config.PendingDeletionGraceDays = 30;
+                }
+                if (typeof config.SonarrUnmonitorScope !== 'number') {
+                    config.SonarrUnmonitorScope = 0;
+                }
+
+                return config;
+            }
+
+            function setRuleInputs(prefix, rule) {
+                document.querySelector('#' + prefix + 'DeleteAfterWatchDays').value = rule.DeleteAfterWatchDays;
+                document.querySelector('#' + prefix + 'DeleteNeverWatchedAfterDays').value = rule.DeleteNeverWatchedAfterDays;
+            }
+
+            function getRuleInputs(prefix) {
+                return {
+                    DeleteAfterWatchDays: parseInt(document.querySelector('#' + prefix + 'DeleteAfterWatchDays').value || '-1', 10),
+                    DeleteNeverWatchedAfterDays: parseInt(document.querySelector('#' + prefix + 'DeleteNeverWatchedAfterDays').value || '-1', 10)
+                };
+            }
+
+            function collectConfigFromForm() {
+                if (!currentPluginConfig) {
+                    throw new Error('Janitorfin configuration has not finished loading yet.');
+                }
+
+                var config = JSON.parse(JSON.stringify(currentPluginConfig));
+                config = normalizeConfig(config);
+                config.MovieRules = getRuleInputs('MovieRules');
+                config.EpisodeRules = getRuleInputs('EpisodeRules');
+                config.DeleteAfterWatchDays = config.MovieRules.DeleteAfterWatchDays;
+                config.DeleteNeverWatchedAfterDays = config.MovieRules.DeleteNeverWatchedAfterDays;
+                config.ProtectedTag = document.querySelector('#ProtectedTag').value;
+                config.KeepFavorites = document.querySelector('#KeepFavorites').checked;
+                config.DryRun = document.querySelector('#DryRun').checked;
+                config.EnablePendingDeletion = document.querySelector('#EnablePendingDeletion').checked;
+                config.PendingDeletionGraceDays = parseInt(document.querySelector('#PendingDeletionGraceDays').value || '30', 10);
+                config.EnableRadarrIntegration = document.querySelector('#EnableRadarrIntegration').checked;
+                config.RadarrServerUrl = document.querySelector('#RadarrServerUrl').value;
+                config.RadarrApiKey = document.querySelector('#RadarrApiKey').value;
+                config.UnmonitorRadarrOnDelete = document.querySelector('#UnmonitorRadarrOnDelete').checked;
+                config.EnableSonarrIntegration = document.querySelector('#EnableSonarrIntegration').checked;
+                config.SonarrServerUrl = document.querySelector('#SonarrServerUrl').value;
+                config.SonarrApiKey = document.querySelector('#SonarrApiKey').value;
+                config.UnmonitorSonarrOnDelete = document.querySelector('#UnmonitorSonarrOnDelete').checked;
+                config.SonarrUnmonitorScope = parseInt(document.querySelector('#SonarrUnmonitorScope').value || '0', 10);
+                return config;
+            }
+
+            function normalizeResponse(response) {
+                if (response == null) {
+                    return response;
+                }
+
+                if (typeof response === 'string') {
+                    try {
+                        return JSON.parse(response);
+                    } catch (error) {
+                        return { raw: response };
+                    }
+                }
+
+                if (typeof response.json === 'function') {
+                    return response.json();
+                }
+
+                if (typeof response.text === 'function') {
+                    return response.text().then(function (text) {
+                        if (!text) {
+                            return {};
+                        }
+
+                        try {
+                            return JSON.parse(text);
+                        } catch (error) {
+                            return { raw: text };
+                        }
+                    });
+                }
+
+                return response;
+            }
+
+            function normalizeRejectedResponse(error) {
+                if (!error) {
+                    return Promise.resolve({ message: 'Unknown request failure.' });
+                }
+
+                if (typeof error === 'string') {
+                    return Promise.resolve({ message: error, raw: error });
+                }
+
+                if (error.message || error.raw) {
+                    return Promise.resolve(error);
+                }
+
+                if (typeof error.text === 'function') {
+                    var status = error.status;
+                    var statusText = error.statusText;
+                    var applicationError = error.headers && typeof error.headers.get === 'function'
+                        ? error.headers.get('X-Application-Error-Code')
+                        : null;
+
+                    return error.text().then(function (text) {
+                        var message = text || applicationError || statusText || ('Request failed with status ' + status + '.');
+
+                        try {
+                            var parsed = text ? JSON.parse(text) : null;
+                            if (parsed && typeof parsed === 'object') {
+                                if (!parsed.message && !parsed.Message) {
+                                    parsed.message = message;
+                                }
+
+                                if (status && !parsed.status) {
+                                    parsed.status = status;
+                                }
+
+                                if (statusText && !parsed.statusText) {
+                                    parsed.statusText = statusText;
+                                }
+
+                                if (applicationError && !parsed.applicationError) {
+                                    parsed.applicationError = applicationError;
+                                }
+
+                                if (text && !parsed.raw) {
+                                    parsed.raw = text;
+                                }
+
+                                return parsed;
+                            }
+                        } catch (parseError) {
+                        }
+
+                        return {
+                            message: message,
+                            status: status,
+                            statusText: statusText,
+                            applicationError: applicationError,
+                            raw: text
+                        };
+                    }).catch(function () {
+                        return {
+                            message: applicationError || statusText || ('Request failed with status ' + (status || 'unknown') + '.'),
+                            status: status,
+                            statusText: statusText,
+                            applicationError: applicationError
+                        };
+                    });
+                }
+
+                return Promise.resolve(error);
+            }
+
+            function fetchJson(url, method, body) {
+                var options = {
+                    url: ApiClient.getUrl(url),
+                    type: method || 'GET',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    headers: {
+                        accept: 'application/json'
+                    }
+                };
+
+                if ((method || 'GET').toUpperCase() !== 'GET') {
+                    options.data = JSON.stringify(body || {});
+                }
+
+                return ApiClient.fetch(options).then(function (response) {
+                    return normalizeResponse(response);
+                }).catch(function (error) {
+                    return normalizeRejectedResponse(error).then(function (normalized) {
+                        return Promise.reject(normalized);
+                    });
+                });
+            }
+
+            function getValue(object, camelName, pascalName) {
+                if (!object) {
+                    return undefined;
+                }
+
+                if (Object.prototype.hasOwnProperty.call(object, camelName)) {
+                    return object[camelName];
+                }
+
+                if (Object.prototype.hasOwnProperty.call(object, pascalName)) {
+                    return object[pascalName];
+                }
+
+                return undefined;
+            }
+
+            function escapeHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            function formatDate(value) {
+                if (!value) {
+                    return 'n/a';
+                }
+
+                var date = new Date(value);
+                return isNaN(date.getTime()) ? value : date.toLocaleString();
+            }
+
+            function formatRelativeDeadline(value) {
+                if (!value) {
+                    return '';
+                }
+
+                var date = new Date(value);
+                if (isNaN(date.getTime())) {
+                    return '';
+                }
+
+                var diffMs = date.getTime() - Date.now();
+                var diffDays = Math.ceil(diffMs / 86400000);
+                if (diffDays > 0) {
+                    return 'due in ' + diffDays + ' day' + (diffDays === 1 ? '' : 's');
+                }
+
+                if (diffDays === 0) {
+                    return 'due today';
+                }
+
+                var overdueDays = Math.abs(diffDays);
+                return 'overdue by ' + overdueDays + ' day' + (overdueDays === 1 ? '' : 's');
+            }
+
+            function formatError(error, fallbackMessage) {
+                if (!error) {
+                    return fallbackMessage;
+                }
+
+                if (typeof error === 'string') {
+                    return error;
+                }
+
+                if (error.message) {
+                    return error.message;
+                }
+
+                if (error.raw) {
+                    return error.raw;
+                }
+
+                try {
+                    return JSON.stringify(error);
+                } catch (jsonError) {
+                    return fallbackMessage;
+                }
+            }
+
+            function stringifyForDisplay(value) {
+                if (value == null) {
+                    return '';
+                }
+
+                if (typeof value === 'string') {
+                    return value;
+                }
+
+                try {
+                    return JSON.stringify(value, null, 2);
+                } catch (error) {
+                    return String(value);
+                }
+            }
+
+            function setInlineDebugDump(label, value) {
+                var debugElement = document.querySelector('#InlineDebugDump');
+                if (!debugElement) {
+                    return;
+                }
+
+                var text = stringifyForDisplay(value);
+                debugElement.textContent = label + (text ? '\n' + text : '');
+            }
+
+            function formatEpisodeCode(candidate) {
+                var seasonNumber = getValue(candidate, 'seasonNumber', 'SeasonNumber');
+                var episodeNumber = getValue(candidate, 'episodeNumber', 'EpisodeNumber');
+
+                if (seasonNumber == null || episodeNumber == null) {
+                    return '';
+                }
+
+                return 'S' + String(seasonNumber).padStart(2, '0') + 'E' + String(episodeNumber).padStart(2, '0');
+            }
+
+            function renderBucketSection(title, buckets) {
+                if (!buckets || !buckets.length) {
+                    return '';
+                }
+
+                return [
+                    '<div style="margin-bottom: 1rem;">',
+                    '<div style="font-weight: 600; margin-bottom: 0.4rem;">' + escapeHtml(title) + '</div>',
+                    '<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">',
+                    buckets.map(function (bucket) {
+                        var label = getValue(bucket, 'label', 'Label') || 'Unknown';
+                        var count = getValue(bucket, 'count', 'Count') || 0;
+                        return '<div style="padding: 0.4rem 0.65rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);">' + escapeHtml(label) + ': ' + escapeHtml(String(count)) + '</div>';
+                    }).join(''),
+                    '</div>',
+                    '</div>'
+                ].join('');
+            }
+
+            function renderInfoMessage(summaryText, detailHtml) {
+                document.querySelector('#InlinePreviewSummary').textContent = summaryText;
+                document.querySelector('#InlinePreviewResults').innerHTML = detailHtml || '';
+            }
+
+            function renderInlinePreview(result) {
+                var candidateCount = getValue(result, 'candidateCount', 'CandidateCount') || 0;
+                var scannedItemCount = getValue(result, 'scannedItemCount', 'ScannedItemCount') || 0;
+                var pendingCandidateCount = getValue(result, 'pendingCandidateCount', 'PendingCandidateCount') || 0;
+                var duePendingCandidateCount = getValue(result, 'duePendingCandidateCount', 'DuePendingCandidateCount') || 0;
+                var displayedCandidateCount = getValue(result, 'displayedCandidateCount', 'DisplayedCandidateCount');
+                var detailLimit = getValue(result, 'candidateDetailLimit', 'CandidateDetailLimit');
+                var isTruncated = getValue(result, 'isCandidateListTruncated', 'IsCandidateListTruncated');
+                var candidates = getValue(result, 'candidates', 'Candidates') || [];
+                var libraryBuckets = getValue(result, 'candidatesByLibrary', 'CandidatesByLibrary') || [];
+                var itemTypeBuckets = getValue(result, 'candidatesByItemType', 'CandidatesByItemType') || [];
+                var reasonBuckets = getValue(result, 'candidatesByReason', 'CandidatesByReason') || [];
+
+                setInlineDebugDump('Preview payload', result);
+
+                if (!Array.isArray(candidates)) {
+                    candidates = [];
+                }
+
+                if (!scannedItemCount && !candidateCount && !candidates.length) {
+                    var rawPreview = getValue(result, 'raw', 'Raw');
+                    if (rawPreview) {
+                        renderInfoMessage(rawPreview, '');
+                        return;
+                    }
+
+                    renderInfoMessage('Unexpected preview response: ' + stringifyForDisplay(result), '');
+                    return;
+                }
+
+                var summaryParts = [
+                    'Scanned ' + scannedItemCount + ' items.',
+                    'Found ' + candidateCount + ' cleanup candidates.'
+                ];
+
+                if (pendingCandidateCount) {
+                    summaryParts.push(pendingCandidateCount + ' candidate' + (pendingCandidateCount === 1 ? ' is' : 's are') + ' already staged for deletion.');
+                }
+
+                if (duePendingCandidateCount) {
+                    summaryParts.push(duePendingCandidateCount + ' pending item' + (duePendingCandidateCount === 1 ? ' is' : 's are') + ' ready for deletion on the next live run.');
+                }
+
+                if (isTruncated) {
+                    summaryParts.push('Showing the first ' + (displayedCandidateCount || candidates.length) + ' items out of a limit of ' + detailLimit + '.');
+                }
+
+                if (!candidates.length) {
+                    renderInfoMessage(summaryParts.join(' '), '<div class="fieldDescription">No cleanup candidates matched the current rules.</div>');
+                    return;
+                }
+
+                var cardsHtml = candidates.map(function (candidate) {
+                    var labels = [];
+                    var libraryName = getValue(candidate, 'libraryName', 'LibraryName');
+                    var seriesName = getValue(candidate, 'seriesName', 'SeriesName');
+                    var seasonName = getValue(candidate, 'seasonName', 'SeasonName');
+                    var appliedRuleName = getValue(candidate, 'appliedRuleName', 'AppliedRuleName');
+                    var playedByUsers = getValue(candidate, 'playedByUsers', 'PlayedByUsers') || [];
+                    var itemName = getValue(candidate, 'itemName', 'ItemName') || '';
+                    var itemType = getValue(candidate, 'itemType', 'ItemType') || '';
+                    var reason = getValue(candidate, 'reason', 'Reason') || '';
+                    var dateAddedUtc = getValue(candidate, 'dateAddedUtc', 'DateAddedUtc');
+                    var lastPlayedDateUtc = getValue(candidate, 'lastPlayedDateUtc', 'LastPlayedDateUtc');
+                    var isPendingDeletion = getValue(candidate, 'isPendingDeletion', 'IsPendingDeletion');
+                    var pendingSinceUtc = getValue(candidate, 'pendingSinceUtc', 'PendingSinceUtc');
+                    var pendingDeleteAfterUtc = getValue(candidate, 'pendingDeleteAfterUtc', 'PendingDeleteAfterUtc');
+                    var path = getValue(candidate, 'path', 'Path');
+
+                    if (libraryName) {
+                        labels.push('Library: ' + escapeHtml(libraryName));
+                    }
+                    if (seriesName) {
+                        labels.push('Series: ' + escapeHtml(seriesName));
+                    }
+                    if (seasonName) {
+                        labels.push('Season: ' + escapeHtml(seasonName));
+                    }
+                    if (formatEpisodeCode(candidate)) {
+                        labels.push('Episode: ' + escapeHtml(formatEpisodeCode(candidate)));
+                    }
+                    if (appliedRuleName) {
+                        labels.push('Rule: ' + escapeHtml(appliedRuleName));
+                    }
+                    if (playedByUsers.length) {
+                        labels.push('Played by: ' + escapeHtml(playedByUsers.join(', ')));
+                    }
+                    if (isPendingDeletion) {
+                        labels.push('Pending since: ' + escapeHtml(formatDate(pendingSinceUtc)));
+                    }
+
+                    return [
+                        '<div class="listItem" style="padding: 1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem; margin-bottom: 0.75rem;">',
+                        '<div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">',
+                        '<div>',
+                        '<div style="font-weight: 600;">' + escapeHtml(itemName) + '</div>',
+                        '<div class="fieldDescription">' + escapeHtml(itemType) + '</div>',
+                        '</div>',
+                        '<div class="fieldDescription">' + escapeHtml(reason) + (isPendingDeletion ? ' | Pending deletion' : '') + '</div>',
+                        '</div>',
+                        labels.length ? '<div class="fieldDescription" style="margin-top: 0.5rem;">' + labels.join(' | ') + '</div>' : '',
+                        '<div class="fieldDescription" style="margin-top: 0.5rem;">Added: ' + escapeHtml(formatDate(dateAddedUtc)) + ' | Last played: ' + escapeHtml(formatDate(lastPlayedDateUtc)) + '</div>',
+                        isPendingDeletion ? '<div class="fieldDescription" style="margin-top: 0.5rem;">Delete after: ' + escapeHtml(formatDate(pendingDeleteAfterUtc)) + ' (' + escapeHtml(formatRelativeDeadline(pendingDeleteAfterUtc)) + ')</div>' : '',
+                        path ? '<div class="fieldDescription" style="margin-top: 0.5rem; word-break: break-all;">' + escapeHtml(path) + '</div>' : '',
+                        '</div>'
+                    ].join('');
+                }).join('');
+
+                var resultsHtml = [
+                    renderBucketSection('By Type', itemTypeBuckets),
+                    renderBucketSection('By Reason', reasonBuckets),
+                    renderBucketSection('Top Libraries', libraryBuckets),
+                    isTruncated ? '<div class="fieldDescription" style="margin-bottom: 1rem;">Detailed rows are capped to keep the page responsive. Use the debug payload below only when you need raw response inspection.</div>' : '',
+                    cardsHtml
+                ].join('');
+
+                renderInfoMessage(summaryParts.join(' '), resultsHtml);
+            }
+
+            function renderInlineExecutionSummary(result) {
+                var summary = document.querySelector('#InlineExecutionSummary');
+                var raw = getValue(result, 'raw', 'Raw');
+                var resultCount = getValue(result, 'resultCount', 'ResultCount');
+                var displayedResultCount = getValue(result, 'displayedResultCount', 'DisplayedResultCount');
+                var isResultListTruncated = getValue(result, 'isResultListTruncated', 'IsResultListTruncated');
+
+                setInlineDebugDump('Execution payload', result);
+
+                if (raw) {
+                    summary.textContent = raw;
+                    return;
+                }
+
+                summary.textContent = [
+                    getValue(result, 'dryRun', 'DryRun') ? 'Dry run complete.' : 'Cleanup run complete.',
+                    'Candidates: ' + (getValue(result, 'candidateCount', 'CandidateCount') || 0),
+                    'Queued: ' + (getValue(result, 'queuedCount', 'QueuedCount') || 0),
+                    'Still pending: ' + (getValue(result, 'pendingCount', 'PendingCount') || 0),
+                    'Deleted: ' + (getValue(result, 'deletedCount', 'DeletedCount') || 0),
+                    'Failed: ' + (getValue(result, 'failedCount', 'FailedCount') || 0),
+                    'Radarr updated: ' + (getValue(result, 'radarrUpdatedCount', 'RadarrUpdatedCount') || 0),
+                    'Sonarr updated: ' + (getValue(result, 'sonarrUpdatedCount', 'SonarrUpdatedCount') || 0),
+                    isResultListTruncated ? 'Stored sample results: ' + displayedResultCount + ' of ' + resultCount + '.' : ''
+                ].join(' ').trim();
+            }
+
+            function setPendingIdleState() {
+                document.querySelector('#PendingDeletionSummary').textContent = 'Pending list not loaded yet.';
+                document.querySelector('#PendingDeletionResults').innerHTML = '<div class="fieldDescription">Use Refresh Pending List to inspect currently staged items.</div>';
+            }
+
+            function renderPendingDeletionSummary(result) {
+                var summaryElement = document.querySelector('#PendingDeletionSummary');
+                var resultsElement = document.querySelector('#PendingDeletionResults');
+                var raw = getValue(result, 'raw', 'Raw');
+                var entryCount = getValue(result, 'entryCount', 'EntryCount') || 0;
+                var displayedEntryCount = getValue(result, 'displayedEntryCount', 'DisplayedEntryCount') || 0;
+                var detailLimit = getValue(result, 'detailLimit', 'DetailLimit') || 0;
+                var graceDays = getValue(result, 'graceDays', 'GraceDays') || 0;
+                var isTruncated = getValue(result, 'isEntryListTruncated', 'IsEntryListTruncated');
+                var entries = getValue(result, 'entries', 'Entries') || [];
+
+                if (raw) {
+                    summaryElement.textContent = raw;
+                    resultsElement.innerHTML = '';
+                    return;
+                }
+
+                if (!Array.isArray(entries)) {
+                    entries = [];
+                }
+
+                summaryElement.textContent = [
+                    'Grace period: ' + graceDays + ' day' + (graceDays === 1 ? '' : 's') + '.',
+                    'Pending items: ' + entryCount + '.',
+                    isTruncated ? 'Showing ' + displayedEntryCount + ' of ' + entryCount + ' items with a limit of ' + detailLimit + '.' : ''
+                ].join(' ').trim();
+
+                if (!entries.length) {
+                    resultsElement.innerHTML = '<div class="fieldDescription">No items are currently staged for deletion.</div>';
+                    return;
+                }
+
+                resultsElement.innerHTML = entries.map(function (entry) {
+                    var itemName = getValue(entry, 'itemName', 'ItemName') || '';
+                    var itemType = getValue(entry, 'itemType', 'ItemType') || '';
+                    var libraryName = getValue(entry, 'libraryName', 'LibraryName');
+                    var seriesName = getValue(entry, 'seriesName', 'SeriesName');
+                    var seasonName = getValue(entry, 'seasonName', 'SeasonName');
+                    var reason = getValue(entry, 'reason', 'Reason') || '';
+                    var appliedRuleName = getValue(entry, 'appliedRuleName', 'AppliedRuleName');
+                    var firstQualifiedUtc = getValue(entry, 'firstQualifiedUtc', 'FirstQualifiedUtc');
+                    var lastMatchedUtc = getValue(entry, 'lastMatchedUtc', 'LastMatchedUtc');
+                    var deleteAfterUtc = getValue(entry, 'deleteAfterUtc', 'DeleteAfterUtc');
+                    var path = getValue(entry, 'path', 'Path');
+                    var labels = [];
+
+                    if (libraryName) {
+                        labels.push('Library: ' + escapeHtml(libraryName));
+                    }
+                    if (seriesName) {
+                        labels.push('Series: ' + escapeHtml(seriesName));
+                    }
+                    if (seasonName) {
+                        labels.push('Season: ' + escapeHtml(seasonName));
+                    }
+                    if (appliedRuleName) {
+                        labels.push('Rule: ' + escapeHtml(appliedRuleName));
+                    }
+
+                    return [
+                        '<div class="listItem" style="padding: 1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem; margin-bottom: 0.75rem;">',
+                        '<div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">',
+                        '<div>',
+                        '<div style="font-weight: 600;">' + escapeHtml(itemName) + '</div>',
+                        '<div class="fieldDescription">' + escapeHtml(itemType) + '</div>',
+                        '</div>',
+                        '<div class="fieldDescription">' + escapeHtml(reason) + '</div>',
+                        '</div>',
+                        labels.length ? '<div class="fieldDescription" style="margin-top: 0.5rem;">' + labels.join(' | ') + '</div>' : '',
+                        '<div class="fieldDescription" style="margin-top: 0.5rem;">First qualified: ' + escapeHtml(formatDate(firstQualifiedUtc)) + ' | Last matched: ' + escapeHtml(formatDate(lastMatchedUtc)) + '</div>',
+                        '<div class="fieldDescription" style="margin-top: 0.5rem;">Delete after: ' + escapeHtml(formatDate(deleteAfterUtc)) + ' (' + escapeHtml(formatRelativeDeadline(deleteAfterUtc)) + ')</div>',
+                        path ? '<div class="fieldDescription" style="margin-top: 0.5rem; word-break: break-all;">' + escapeHtml(path) + '</div>' : '',
+                        '</div>'
+                    ].join('');
+                }).join('');
+            }
+
+            function loadPendingDeletionSummary() {
+                document.querySelector('#PendingDeletionSummary').textContent = 'Loading pending deletions...';
+                document.querySelector('#PendingDeletionResults').innerHTML = '';
+                Dashboard.showLoadingMsg();
+                fetchJson('Janitorfin/Pending', 'GET').then(function (result) {
+                    renderPendingDeletionSummary(result);
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    setInlineDebugDump('Pending list error', error);
+                    document.querySelector('#PendingDeletionSummary').textContent = formatError(error, 'Pending list request failed.');
+                    document.querySelector('#PendingDeletionResults').innerHTML = '';
+                    Dashboard.hideLoadingMsg();
+                });
+            }
+
+            function setPreviewIdleState() {
+                renderInfoMessage('Preview not loaded yet.', '<div class="fieldDescription">Use Refresh Preview to load a summary and a capped sample of matching items.</div>');
+            }
+
+            function loadInlinePreview(useFormValues) {
+                var method = 'GET';
+                var body;
+                var url = 'Janitorfin/Preview';
+
+                if (useFormValues) {
+                    try {
+                        body = collectConfigFromForm();
+                        method = 'POST';
+                        url = 'Janitorfin/Preview/WithConfiguration';
+                    } catch (error) {
+                        setInlineDebugDump('Preview error', formatError(error, 'Preview request failed.'));
+                        renderInfoMessage(formatError(error, 'Preview request failed.'), '');
+                        return;
+                    }
+                }
+
+                document.querySelector('#InlinePreviewSummary').textContent = 'Loading preview...';
+                document.querySelector('#InlinePreviewResults').innerHTML = '';
+                Dashboard.showLoadingMsg();
+                fetchJson(url, method, body).then(function (result) {
+                    renderInlinePreview(result);
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    setInlineDebugDump('Preview error', error);
+                    renderInfoMessage(formatError(error, 'Preview request failed.'), '');
+                    Dashboard.hideLoadingMsg();
+                });
+            }
+
+            function runInlineDryRun() {
+                var config;
+
+                try {
+                    config = collectConfigFromForm();
+                } catch (error) {
+                    setInlineDebugDump('Dry run error', formatError(error, 'Dry run execution failed.'));
+                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Dry run execution failed.');
+                    return;
+                }
+
+                document.querySelector('#InlineExecutionSummary').textContent = 'Running dry run...';
+                Dashboard.showLoadingMsg();
+                fetchJson('Janitorfin/Execute/WithConfiguration?dryRun=true', 'POST', config).then(function (result) {
+                    renderInlineExecutionSummary(result);
+                    loadPendingDeletionSummary();
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    setInlineDebugDump('Dry run error', error);
+                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Dry run execution failed.');
+                    Dashboard.hideLoadingMsg();
+                });
+            }
+
+            function runInlineLiveCleanup() {
+                var config;
+
+                try {
+                    config = collectConfigFromForm();
+                } catch (error) {
+                    setInlineDebugDump('Cleanup error', formatError(error, 'Cleanup execution failed.'));
+                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Cleanup execution failed.');
+                    return;
+                }
+
+                Dashboard.confirm({
+                    title: 'Run Janitorfin Cleanup',
+                    message: config.EnablePendingDeletion
+                        ? 'This will apply the current form values. Newly matching items will be queued, and any expired pending items will be deleted.'
+                        : 'This will delete matching media immediately using the current form values.'
+                }).then(function () {
+                    document.querySelector('#InlineExecutionSummary').textContent = 'Running cleanup...';
+                    Dashboard.showLoadingMsg();
+                    fetchJson('Janitorfin/Execute/WithConfiguration?dryRun=false', 'POST', config).then(function (result) {
+                        renderInlineExecutionSummary(result);
+                        renderInfoMessage('Preview may now be stale.', '<div class="fieldDescription">Refresh Preview to recompute candidates after the cleanup run.</div>');
+                        loadPendingDeletionSummary();
+                        Dashboard.hideLoadingMsg();
+                    }).catch(function (error) {
+                        setInlineDebugDump('Cleanup error', error);
+                        document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Cleanup execution failed.');
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+            }
+
+            document.querySelector('#JanitorfinConfigPage').addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(JanitorfinConfig.pluginUniqueId).then(function (config) {
+                    config = normalizeConfig(config);
+                    currentPluginConfig = config;
+                    if (config.MovieRules.DeleteAfterWatchDays === -2) {
+                        config.MovieRules.DeleteAfterWatchDays = typeof config.DeleteAfterWatchDays === 'number' ? config.DeleteAfterWatchDays : 30;
+                    }
+                    if (config.MovieRules.DeleteNeverWatchedAfterDays === -2) {
+                        config.MovieRules.DeleteNeverWatchedAfterDays = typeof config.DeleteNeverWatchedAfterDays === 'number' ? config.DeleteNeverWatchedAfterDays : 180;
+                    }
+                    if (config.EpisodeRules.DeleteAfterWatchDays === -2) {
+                        config.EpisodeRules.DeleteAfterWatchDays = typeof config.DeleteAfterWatchDays === 'number' ? config.DeleteAfterWatchDays : 30;
+                    }
+                    if (config.EpisodeRules.DeleteNeverWatchedAfterDays === -2) {
+                        config.EpisodeRules.DeleteNeverWatchedAfterDays = typeof config.DeleteNeverWatchedAfterDays === 'number' ? config.DeleteNeverWatchedAfterDays : 180;
+                    }
+                    setRuleInputs('MovieRules', config.MovieRules);
+                    setRuleInputs('EpisodeRules', config.EpisodeRules);
+                    document.querySelector('#ProtectedTag').value = config.ProtectedTag || '';
+                    document.querySelector('#KeepFavorites').checked = config.KeepFavorites !== false;
+                    document.querySelector('#DryRun').checked = config.DryRun;
+                    document.querySelector('#EnablePendingDeletion').checked = config.EnablePendingDeletion !== false;
+                    document.querySelector('#PendingDeletionGraceDays').value = config.PendingDeletionGraceDays;
+                    document.querySelector('#EnableRadarrIntegration').checked = config.EnableRadarrIntegration;
+                    document.querySelector('#RadarrServerUrl').value = config.RadarrServerUrl || '';
+                    document.querySelector('#RadarrApiKey').value = config.RadarrApiKey || '';
+                    document.querySelector('#UnmonitorRadarrOnDelete').checked = config.UnmonitorRadarrOnDelete;
+                    document.querySelector('#EnableSonarrIntegration').checked = config.EnableSonarrIntegration;
+                    document.querySelector('#SonarrServerUrl').value = config.SonarrServerUrl || '';
+                    document.querySelector('#SonarrApiKey').value = config.SonarrApiKey || '';
+                    document.querySelector('#UnmonitorSonarrOnDelete').checked = config.UnmonitorSonarrOnDelete;
+                    document.querySelector('#SonarrUnmonitorScope').value = String(config.SonarrUnmonitorScope);
+                    setInlineDebugDump('Page loaded', { version: JanitorfinConfig.pageVersion });
+                    setPreviewIdleState();
+                    setPendingIdleState();
+                    loadPendingDeletionSummary();
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#RefreshInlinePreviewButton').addEventListener('click', function () {
+                loadInlinePreview(true);
+            });
+
+            document.querySelector('#RunInlineDryRunButton').addEventListener('click', function () {
+                runInlineDryRun();
+            });
+
+            document.querySelector('#RunInlineLiveCleanupButton').addEventListener('click', function () {
+                runInlineLiveCleanup();
+            });
+
+            document.querySelector('#RefreshPendingDeletionButton').addEventListener('click', function () {
+                loadPendingDeletionSummary();
+            });
+
+            document.querySelector('#TestRadarrConnection').addEventListener('click', function () {
+                var resultElement = document.querySelector('#RadarrTestResult');
+                Dashboard.showLoadingMsg();
+                postJson('Janitorfin/Test/Radarr').then(function (result) {
+                    resultElement.textContent = result.message || result.Message || 'Radarr connection test completed.';
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    resultElement.textContent = formatError(error, 'Radarr connection test failed.');
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#TestSonarrConnection').addEventListener('click', function () {
+                var resultElement = document.querySelector('#SonarrTestResult');
+                Dashboard.showLoadingMsg();
+                postJson('Janitorfin/Test/Sonarr').then(function (result) {
+                    resultElement.textContent = result.message || result.Message || 'Sonarr connection test completed.';
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    resultElement.textContent = formatError(error, 'Sonarr connection test failed.');
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#JanitorfinConfigForm').addEventListener('submit', function (e) {
+                Dashboard.showLoadingMsg();
+                Promise.resolve().then(function () {
+                    var config;
+
+                    try {
+                        config = collectConfigFromForm();
+                    } catch (error) {
+                        Dashboard.hideLoadingMsg();
+                        window.alert('Configuration is invalid: ' + formatError(error, 'Unknown configuration error.'));
+                        return;
+                    }
+
+                    ApiClient.updatePluginConfiguration(JanitorfinConfig.pluginUniqueId, config).then(function (result) {
+                        currentPluginConfig = normalizeConfig(config);
+                        loadPendingDeletionSummary();
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+
+                e.preventDefault();
+                return false;
+            });
+        </script>
+    </div>
+</body>
+</html>

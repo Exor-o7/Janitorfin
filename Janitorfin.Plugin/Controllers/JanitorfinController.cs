@@ -16,6 +16,7 @@ public class JanitorfinController : ControllerBase
 {
     private readonly CleanupEvaluationService _cleanupEvaluationService;
     private readonly CleanupExecutionService _cleanupExecutionService;
+    private readonly PendingDeletionQueueService _pendingDeletionQueueService;
     private readonly IRadarrClient _radarrClient;
     private readonly ISonarrClient _sonarrClient;
     private readonly ILogger<JanitorfinController> _logger;
@@ -23,12 +24,14 @@ public class JanitorfinController : ControllerBase
     public JanitorfinController(
         CleanupEvaluationService cleanupEvaluationService,
         CleanupExecutionService cleanupExecutionService,
+        PendingDeletionQueueService pendingDeletionQueueService,
         IRadarrClient radarrClient,
         ISonarrClient sonarrClient,
         ILogger<JanitorfinController> logger)
     {
         _cleanupEvaluationService = cleanupEvaluationService;
         _cleanupExecutionService = cleanupExecutionService;
+        _pendingDeletionQueueService = pendingDeletionQueueService;
         _radarrClient = radarrClient;
         _sonarrClient = sonarrClient;
         _logger = logger;
@@ -39,7 +42,10 @@ public class JanitorfinController : ControllerBase
     {
         try
         {
-            return await _cleanupEvaluationService.EvaluateAsync(Plugin.Instance!.Configuration, cancellationToken).ConfigureAwait(false);
+            return await _cleanupEvaluationService.EvaluateAsync(
+                Plugin.Instance!.Configuration,
+                cancellationToken,
+                CleanupEvaluationService.DefaultPreviewCandidateDetailLimit).ConfigureAwait(false);
         }
         catch (System.Exception ex)
         {
@@ -52,7 +58,10 @@ public class JanitorfinController : ControllerBase
     {
         try
         {
-            return await _cleanupEvaluationService.EvaluateAsync(configuration ?? Plugin.Instance!.Configuration, cancellationToken).ConfigureAwait(false);
+            return await _cleanupEvaluationService.EvaluateAsync(
+                configuration ?? Plugin.Instance!.Configuration,
+                cancellationToken,
+                CleanupEvaluationService.DefaultPreviewCandidateDetailLimit).ConfigureAwait(false);
         }
         catch (System.Exception ex)
         {
@@ -84,6 +93,12 @@ public class JanitorfinController : ControllerBase
         {
             return CreateErrorResult(ex, "Execution with posted configuration failed.");
         }
+    }
+
+    [HttpGet("Pending")]
+    public ActionResult<PendingDeletionSummary> Pending()
+    {
+        return _pendingDeletionQueueService.GetSummary(Plugin.Instance!.Configuration, PendingDeletionQueueService.DefaultPendingDetailLimit);
     }
 
     [HttpPost("Test/Radarr")]
