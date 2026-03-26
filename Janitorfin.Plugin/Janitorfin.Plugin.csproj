@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Janitorfin.Plugin</RootNamespace>
-    <Version>1.0.1</Version>
-    <AssemblyVersion>1.0.1</AssemblyVersion>
-    <FileVersion>1.0.1</FileVersion>
-    <InformationalVersion>1.0.1</InformationalVersion>
+    <Version>1.0.2</Version>
+    <AssemblyVersion>1.0.2</AssemblyVersion>
+    <FileVersion>1.0.2</FileVersion>
+    <InformationalVersion>1.0.2</InformationalVersion>
     <AssemblyTitle>Janitorfin</AssemblyTitle>
     <Product>Janitorfin</Product>
     <Company>Exor.dev</Company>
