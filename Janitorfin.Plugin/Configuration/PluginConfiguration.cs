@@ -50,6 +50,7 @@ public class PluginConfiguration : BasePluginConfiguration
         KeepFavorites = true;
         EnablePendingDeletion = true;
         PendingDeletionGraceDays = 30;
+        EnableHomeScreenSectionsIntegration = true;
         DryRun = true;
         UnmonitorRadarrOnDelete = true;
         UnmonitorSonarrOnDelete = true;
@@ -79,6 +80,8 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool EnablePendingDeletion { get; set; }
 
     public int PendingDeletionGraceDays { get; set; }
+
+    public bool EnableHomeScreenSectionsIntegration { get; set; }
 
     public bool DryRun { get; set; }
 

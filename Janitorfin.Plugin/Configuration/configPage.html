@@ -48,8 +48,16 @@
                             <div class="fieldDescription">Items stay on the pending list for this many days before Janitorfin will delete them on a later run.</div>
                         </div>
 
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableHomeScreenSectionsIntegration" name="EnableHomeScreenSectionsIntegration" type="checkbox" is="emby-checkbox" />
+                                <span>Integrate with Home Screen Sections when available</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">When the Home Screen Sections plugin is installed, Janitorfin registers a Janitorfin Review row automatically. If it is not installed, Janitorfin continues using the Janitorfin Review collection by itself.</div>
+                        </div>
+
                         <div class="fieldDescription" style="margin-top: 0.75em;">
-                            Janitorfin also mirrors staged items into the Jellyfin collection <strong>Janitorfin Review</strong> so users can browse the list like normal media and protect items by watching or favoriting them.
+                            Janitorfin always mirrors staged items into the Jellyfin collection <strong>Janitorfin Review</strong> so users can browse the list like normal media and protect items by watching or favoriting them.
                         </div>
                     </fieldset>
 
@@ -219,7 +227,7 @@
         <script type="text/javascript">
             var JanitorfinConfig = {
                 pluginUniqueId: '8eab83a3-4377-4036-8b37-68bc4767bc9e',
-                pageVersion: '20260326b'
+                pageVersion: '20260326c'
             };
             var currentPluginConfig = null;
 
@@ -276,6 +284,9 @@
                 if (typeof config.PendingDeletionGraceDays !== 'number') {
                     config.PendingDeletionGraceDays = 30;
                 }
+                if (typeof config.EnableHomeScreenSectionsIntegration !== 'boolean') {
+                    config.EnableHomeScreenSectionsIntegration = true;
+                }
                 if (typeof config.SonarrUnmonitorScope !== 'number') {
                     config.SonarrUnmonitorScope = 0;
                 }
@@ -311,6 +322,7 @@
                 config.DryRun = document.querySelector('#DryRun').checked;
                 config.EnablePendingDeletion = document.querySelector('#EnablePendingDeletion').checked;
                 config.PendingDeletionGraceDays = parseInt(document.querySelector('#PendingDeletionGraceDays').value || '30', 10);
+                config.EnableHomeScreenSectionsIntegration = document.querySelector('#EnableHomeScreenSectionsIntegration').checked;
                 config.EnableRadarrIntegration = document.querySelector('#EnableRadarrIntegration').checked;
                 config.RadarrServerUrl = document.querySelector('#RadarrServerUrl').value;
                 config.RadarrApiKey = document.querySelector('#RadarrApiKey').value;
@@ -950,6 +962,7 @@
                     document.querySelector('#DryRun').checked = config.DryRun;
                     document.querySelector('#EnablePendingDeletion').checked = config.EnablePendingDeletion !== false;
                     document.querySelector('#PendingDeletionGraceDays').value = config.PendingDeletionGraceDays;
+                    document.querySelector('#EnableHomeScreenSectionsIntegration').checked = config.EnableHomeScreenSectionsIntegration !== false;
                     document.querySelector('#EnableRadarrIntegration').checked = config.EnableRadarrIntegration;
                     document.querySelector('#RadarrServerUrl').value = config.RadarrServerUrl || '';
                     document.querySelector('#RadarrApiKey').value = config.RadarrApiKey || '';

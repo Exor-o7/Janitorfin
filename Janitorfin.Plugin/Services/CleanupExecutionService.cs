@@ -42,6 +42,8 @@ public sealed class CleanupExecutionService
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
+        HomeScreenSectionsIntegrationBootstrap.Refresh(configuration);
+
         var evaluation = await _cleanupEvaluationService.EvaluateAsync(configuration, cancellationToken).ConfigureAwait(false);
         var dryRun = dryRunOverride ?? configuration.DryRun;
         var now = DateTime.UtcNow;
