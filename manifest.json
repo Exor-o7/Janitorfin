@@ -9,11 +9,11 @@
     "versions": [
       {
         "version": "1.0.1",
-        "changelog": "Full Changelog: https://github.com/Exor-o7/Janitorfin/commits/v1.0.1",
+        "changelog": "**Full Changelog**: https://github.com/Exor-o7/Janitorfin/commits/v1.0.1\n\n**Full Changelog**: https://github.com/Exor-o7/Janitorfin/compare/v1.0.0...v1.0.1",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Exor-o7/Janitorfin/releases/download/v1.0.1/Janitorfin.zip",
-        "checksum": "3e83c7a3adc1d6eba4ebb64878fe6208",
-        "timestamp": "2026-03-26T04:52:06.8399780Z",
+        "checksum": "ec21fa9c6d0b566b13dbc9aaa7399cf9",
+        "timestamp": "03/26/2026 04:42:51",
         "repositoryName": "Janitorfin",
         "repositoryUrl": "https://raw.githubusercontent.com/Exor-o7/Janitorfin/main/manifest.json"
       }
