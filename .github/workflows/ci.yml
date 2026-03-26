@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - 'v*'
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore .\Janitorfin.Plugin\Janitorfin.Plugin.csproj
+
+      - name: Build
+        run: dotnet build .\Janitorfin.Plugin\Janitorfin.Plugin.csproj -c Release --no-restore
+
+      - name: Publish
+        run: dotnet publish .\Janitorfin.Plugin\Janitorfin.Plugin.csproj -c Release -o .\artifacts\publish\Janitorfin --no-build
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path $PWD 'artifacts/publish/Janitorfin'
+          $packageDir = Join-Path $PWD 'artifacts/package'
+          $zipPath = Join-Path $packageDir 'Janitorfin.zip'
+          New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+          Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath
+
+      - name: Upload packaged artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Janitorfin
+          path: artifacts/package/Janitorfin.zip
+          if-no-files-found: error

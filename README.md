@@ -9,6 +9,9 @@
   <a href="https://github.com/Exor-o7/Janitorfin">
     <img alt="GitHub Repo" src="https://img.shields.io/badge/GitHub-Exor--o7%2FJanitorfin-181717?logo=github" />
   </a>
+  <a href="https://github.com/Exor-o7/Janitorfin/actions/workflows/ci.yml">
+    <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Exor-o7/Janitorfin/ci.yml?branch=main&label=CI" />
+  </a>
   <a href="https://github.com/Exor-o7/Janitorfin/releases">
     <img alt="Current Release" src="https://img.shields.io/github/v/release/Exor-o7/Janitorfin" />
   </a>
@@ -93,6 +96,13 @@ When pending deletion is enabled, Janitorfin does not delete matching items imme
 3. Restart Jellyfin.
 4. Open Dashboard > Plugins > Janitorfin to configure rules.
 
+### Automatic Releases
+
+- Pushes and pull requests run the `CI` workflow automatically.
+- Version tags like `v1.0.3` run the `Release` workflow automatically.
+- The release workflow builds the plugin, packages `Janitorfin.zip`, creates a GitHub Release, and uploads the zip asset.
+- Regular CI runs also upload `Janitorfin.zip` as a workflow artifact for testing before an official release.
+
 ### Install From Local Build
 
 1. Build or publish the plugin.
@@ -167,6 +177,13 @@ dotnet build .\Janitorfin.Plugin\Janitorfin.Plugin.csproj -c Release
 ```powershell
 dotnet publish .\Janitorfin.Plugin\Janitorfin.Plugin.csproj -c Release -o .\artifacts\publish\Janitorfin
 ```
+
+### Release
+
+1. Update the plugin version in `Janitorfin.Plugin/Janitorfin.Plugin.csproj`.
+2. Commit and push your changes.
+3. Create and push a version tag such as `v1.0.3`.
+4. GitHub Actions will create the release and upload `Janitorfin.zip` automatically.
 
 ### Workspace Notes
 
