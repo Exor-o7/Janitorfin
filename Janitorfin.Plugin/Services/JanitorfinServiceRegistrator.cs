@@ -9,6 +9,7 @@ public sealed class JanitorfinServiceRegistrator : IPluginServiceRegistrator
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
         serviceCollection.AddSingleton<PendingDeletionQueueService>();
+        serviceCollection.AddSingleton<PendingDeletionReviewCollectionService>();
         serviceCollection.AddSingleton<CleanupEvaluationService>();
         serviceCollection.AddSingleton<CleanupExecutionService>();
         serviceCollection.AddSingleton<IRadarrClient, RadarrClient>();

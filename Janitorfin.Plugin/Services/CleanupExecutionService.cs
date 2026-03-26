@@ -15,6 +15,7 @@ public sealed class CleanupExecutionService
     private readonly CleanupEvaluationService _cleanupEvaluationService;
     private readonly ILibraryManager _libraryManager;
     private readonly PendingDeletionQueueService _pendingDeletionQueueService;
+    private readonly PendingDeletionReviewCollectionService _pendingDeletionReviewCollectionService;
     private readonly IRadarrClient _radarrClient;
     private readonly ISonarrClient _sonarrClient;
     private readonly ILogger<CleanupExecutionService> _logger;
@@ -23,6 +24,7 @@ public sealed class CleanupExecutionService
         CleanupEvaluationService cleanupEvaluationService,
         ILibraryManager libraryManager,
         PendingDeletionQueueService pendingDeletionQueueService,
+        PendingDeletionReviewCollectionService pendingDeletionReviewCollectionService,
         IRadarrClient radarrClient,
         ISonarrClient sonarrClient,
         ILogger<CleanupExecutionService> logger)
@@ -30,6 +32,7 @@ public sealed class CleanupExecutionService
         _cleanupEvaluationService = cleanupEvaluationService;
         _libraryManager = libraryManager;
         _pendingDeletionQueueService = pendingDeletionQueueService;
+        _pendingDeletionReviewCollectionService = pendingDeletionReviewCollectionService;
         _radarrClient = radarrClient;
         _sonarrClient = sonarrClient;
         _logger = logger;
@@ -220,6 +223,18 @@ public sealed class CleanupExecutionService
                     Error = ex.Message,
                 });
                 resultCount++;
+            }
+        }
+
+        if (!dryRun)
+        {
+            try
+            {
+                await _pendingDeletionReviewCollectionService.SyncAsync(configuration, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Janitorfin review collection sync failed.");
             }
         }
 

@@ -47,6 +47,10 @@
                             <input id="PendingDeletionGraceDays" name="PendingDeletionGraceDays" type="number" is="emby-input" min="0" />
                             <div class="fieldDescription">Items stay on the pending list for this many days before Janitorfin will delete them on a later run.</div>
                         </div>
+
+                        <div class="fieldDescription" style="margin-top: 0.75em;">
+                            Janitorfin also mirrors staged items into the Jellyfin collection <strong>Janitorfin Review</strong> so users can browse the list like normal media and protect items by watching or favoriting them.
+                        </div>
                     </fieldset>
 
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
@@ -196,7 +200,7 @@
                         <legend><h2>Pending Deletions</h2></legend>
 
                         <div class="fieldDescription" style="margin-bottom: 1em;">
-                            This list shows items already staged for deletion. If they keep matching the rules until their deadline, the next live cleanup run will remove them.
+                            This list shows items already staged for deletion. Janitorfin also syncs the same items into the Jellyfin collection <strong>Janitorfin Review</strong>. If they keep matching the rules until their deadline, the next live cleanup run will remove them.
                         </div>
 
                         <div>
@@ -215,7 +219,7 @@
         <script type="text/javascript">
             var JanitorfinConfig = {
                 pluginUniqueId: '8eab83a3-4377-4036-8b37-68bc4767bc9e',
-                pageVersion: '20260326a'
+                pageVersion: '20260326b'
             };
             var currentPluginConfig = null;
 
