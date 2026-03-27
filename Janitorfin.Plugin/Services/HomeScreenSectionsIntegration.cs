@@ -28,20 +28,20 @@ public sealed class JanitorfinHomeScreenSectionResultsHandler
 
     private readonly IDtoService _dtoService;
     private readonly ILibraryManager _libraryManager;
-    private readonly PendingDeletionQueueService _pendingDeletionQueueService;
+    private readonly PendingDeletionReviewItemService _pendingDeletionReviewItemService;
     private readonly IUserManager _userManager;
     private readonly ILogger<JanitorfinHomeScreenSectionResultsHandler> _logger;
 
     public JanitorfinHomeScreenSectionResultsHandler(
         IDtoService dtoService,
         ILibraryManager libraryManager,
-        PendingDeletionQueueService pendingDeletionQueueService,
+        PendingDeletionReviewItemService pendingDeletionReviewItemService,
         IUserManager userManager,
         ILogger<JanitorfinHomeScreenSectionResultsHandler> logger)
     {
         _dtoService = dtoService;
         _libraryManager = libraryManager;
-        _pendingDeletionQueueService = pendingDeletionQueueService;
+        _pendingDeletionReviewItemService = pendingDeletionReviewItemService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -62,16 +62,16 @@ public sealed class JanitorfinHomeScreenSectionResultsHandler
             return new QueryResult<BaseItemDto>(Array.Empty<BaseItemDto>());
         }
 
-        var entries = _pendingDeletionQueueService.GetSummary(configuration).Entries;
-        if (entries.Count == 0)
+        var reviewItemIds = _pendingDeletionReviewItemService.GetReviewItemIds(configuration);
+        if (reviewItemIds.Count == 0)
         {
             return new QueryResult<BaseItemDto>(Array.Empty<BaseItemDto>());
         }
 
-        var items = new List<BaseItem>(entries.Count);
-        foreach (var entry in entries)
+        var items = new List<BaseItem>(reviewItemIds.Count);
+        foreach (var itemId in reviewItemIds)
         {
-            var item = _libraryManager.GetItemById<BaseItem>(entry.ItemId, user);
+            var item = _libraryManager.GetItemById<BaseItem>(itemId, user);
             if (item is not null)
             {
                 items.Add(item);

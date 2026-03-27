@@ -19,18 +19,18 @@ public sealed class PendingDeletionReviewCollectionService
 
     private readonly ICollectionManager _collectionManager;
     private readonly ILibraryManager _libraryManager;
-    private readonly PendingDeletionQueueService _pendingDeletionQueueService;
+    private readonly PendingDeletionReviewItemService _pendingDeletionReviewItemService;
     private readonly ILogger<PendingDeletionReviewCollectionService> _logger;
 
     public PendingDeletionReviewCollectionService(
         ICollectionManager collectionManager,
         ILibraryManager libraryManager,
-        PendingDeletionQueueService pendingDeletionQueueService,
+        PendingDeletionReviewItemService pendingDeletionReviewItemService,
         ILogger<PendingDeletionReviewCollectionService> logger)
     {
         _collectionManager = collectionManager;
         _libraryManager = libraryManager;
-        _pendingDeletionQueueService = pendingDeletionQueueService;
+        _pendingDeletionReviewItemService = pendingDeletionReviewItemService;
         _logger = logger;
     }
 
@@ -39,9 +39,8 @@ public sealed class PendingDeletionReviewCollectionService
         ArgumentNullException.ThrowIfNull(configuration);
 
         var reviewCollectionName = DefaultCollectionName;
-        var stagedItemIds = configuration.EnablePendingDeletion
-            ? _pendingDeletionQueueService.GetEntriesByItemId().Keys.ToHashSet()
-            : [];
+        var stagedItemIds = _pendingDeletionReviewItemService.GetReviewItemIds(configuration);
+        var stagedItemIdSet = stagedItemIds.ToHashSet();
 
         var collection = FindCollection(reviewCollectionName);
         if (collection is null)
@@ -57,6 +56,8 @@ public sealed class PendingDeletionReviewCollectionService
                 ItemIdList = stagedItemIds.Select(static id => id.ToString()).ToArray(),
             }).ConfigureAwait(false);
 
+            await EnsureManualCollectionOrderAsync(collection, cancellationToken).ConfigureAwait(false);
+
             _logger.LogInformation(
                 "Janitorfin created review collection {CollectionName} with {ItemCount} staged items.",
                 reviewCollectionName,
@@ -65,19 +66,35 @@ public sealed class PendingDeletionReviewCollectionService
             return;
         }
 
-        var existingItemIds = collection.LinkedChildren
-            .Where(child => child.ItemId.HasValue)
-            .Select(child => child.ItemId!.Value)
-            .ToHashSet();
+        await EnsureManualCollectionOrderAsync(collection, cancellationToken).ConfigureAwait(false);
 
-        var itemIdsToAdd = stagedItemIds
-            .Except(existingItemIds)
-            .Where(id => _libraryManager.GetItemById(id) is not null)
+        var existingItemIds = collection.GetLinkedChildren()
+            .Select(child => child.Id)
             .ToArray();
 
         var itemIdsToRemove = existingItemIds
-            .Except(stagedItemIds)
+            .Where(id => !stagedItemIdSet.Contains(id))
             .ToArray();
+
+        var itemIdsToAdd = stagedItemIds
+            .Where(id => _libraryManager.GetItemById(id) is not null)
+            .Where(id => !existingItemIds.Contains(id))
+            .ToArray();
+
+        var isOrderDifferent = existingItemIds
+            .Where(stagedItemIdSet.Contains)
+            .SequenceEqual(stagedItemIds) == false;
+
+        if (isOrderDifferent && existingItemIds.Length > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await _collectionManager.RemoveFromCollectionAsync(collection.Id, existingItemIds).ConfigureAwait(false);
+            existingItemIds = Array.Empty<Guid>();
+            itemIdsToRemove = Array.Empty<Guid>();
+            itemIdsToAdd = stagedItemIds
+                .Where(id => _libraryManager.GetItemById(id) is not null)
+                .ToArray();
+        }
 
         if (itemIdsToAdd.Length > 0)
         {
@@ -91,15 +108,27 @@ public sealed class PendingDeletionReviewCollectionService
             await _collectionManager.RemoveFromCollectionAsync(collection.Id, itemIdsToRemove).ConfigureAwait(false);
         }
 
-        if (itemIdsToAdd.Length > 0 || itemIdsToRemove.Length > 0)
+        if (itemIdsToAdd.Length > 0 || itemIdsToRemove.Length > 0 || isOrderDifferent)
         {
             _logger.LogInformation(
-                "Janitorfin synced review collection {CollectionName}. Added={Added}, Removed={Removed}, Staged={Staged}.",
+                "Janitorfin synced review collection {CollectionName}. Added={Added}, Removed={Removed}, Reordered={Reordered}, Staged={Staged}.",
                 reviewCollectionName,
                 itemIdsToAdd.Length,
                 itemIdsToRemove.Length,
+                isOrderDifferent,
                 stagedItemIds.Count);
         }
+    }
+
+    private static async Task EnsureManualCollectionOrderAsync(BoxSet collection, CancellationToken cancellationToken)
+    {
+        if (string.Equals(collection.DisplayOrder, "Default", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        collection.DisplayOrder = "Default";
+        await collection.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
     }
 
     private BoxSet? FindCollection(string collectionName)
