@@ -13,7 +13,10 @@ public sealed class JanitorfinServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<PendingDeletionReviewCollectionService>();
         serviceCollection.AddSingleton<CleanupEvaluationService>();
         serviceCollection.AddSingleton<CleanupExecutionService>();
+        serviceCollection.AddSingleton<IDiscordNotificationService, DiscordNotificationService>();
+        serviceCollection.AddSingleton<IJanitorfinActivityLogService, JanitorfinActivityLogService>();
         serviceCollection.AddSingleton<IRadarrClient, RadarrClient>();
         serviceCollection.AddSingleton<ISonarrClient, SonarrClient>();
+        serviceCollection.AddSingleton<IJellystatClient, JellystatClient>();
     }
 }

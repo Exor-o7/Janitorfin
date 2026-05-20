@@ -76,10 +76,15 @@ public sealed class PendingDeletionQueueService
             var state = LoadStateLocked();
             var candidateMap = candidates.ToDictionary(candidate => candidate.ItemId, candidate => candidate);
 
-            state.Entries.RemoveAll(entry => !candidateMap.ContainsKey(entry.ItemId));
+            var removedCount = state.Entries.RemoveAll(entry => !candidateMap.ContainsKey(entry.ItemId));
+            if (removedCount > 0)
+            {
+                _logger.LogDebug("Removed {RemovedCount} pending deletion entries because they no longer qualify.", removedCount);
+            }
 
             if (!configuration.EnablePendingDeletion)
             {
+                _logger.LogDebug("Pending deletion is disabled; saved queue after reconciliation with {EntryCount} entries.", state.Entries.Count);
                 SaveStateLocked(state);
                 return;
             }
@@ -91,6 +96,13 @@ public sealed class PendingDeletionQueueService
                 if (existingEntry is null)
                 {
                     state.Entries.Add(CreateEntry(candidate, nowUtc, graceDays));
+                    _logger.LogDebug(
+                        "Queued {ItemName} ({ItemType}, {ItemId}) for pending deletion. GraceDays={GraceDays}, DeleteAfter={DeleteAfter:u}",
+                        candidate.ItemName,
+                        candidate.ItemType,
+                        candidate.ItemId,
+                        graceDays,
+                        nowUtc.AddDays(graceDays));
                     continue;
                 }
 
@@ -99,10 +111,20 @@ public sealed class PendingDeletionQueueService
                 existingEntry.LibraryName = candidate.LibraryName;
                 existingEntry.SeriesName = candidate.SeriesName;
                 existingEntry.SeasonName = candidate.SeasonName;
+                existingEntry.ProductionYear = candidate.ProductionYear;
+                existingEntry.SeasonNumber = candidate.SeasonNumber;
+                existingEntry.EpisodeNumber = candidate.EpisodeNumber;
+                existingEntry.DateAddedUtc = candidate.DateAddedUtc;
                 existingEntry.Path = candidate.Path;
                 existingEntry.Reason = candidate.Reason;
                 existingEntry.AppliedRuleName = candidate.AppliedRuleName;
                 existingEntry.LastMatchedUtc = nowUtc;
+                _logger.LogDebug(
+                    "Refreshed pending deletion entry for {ItemName} ({ItemType}, {ItemId}). DeleteAfter={DeleteAfter:u}",
+                    candidate.ItemName,
+                    candidate.ItemType,
+                    candidate.ItemId,
+                    existingEntry.DeleteAfterUtc);
             }
 
             SaveStateLocked(state);
@@ -131,6 +153,10 @@ public sealed class PendingDeletionQueueService
             LibraryName = candidate.LibraryName,
             SeriesName = candidate.SeriesName,
             SeasonName = candidate.SeasonName,
+            ProductionYear = candidate.ProductionYear,
+            SeasonNumber = candidate.SeasonNumber,
+            EpisodeNumber = candidate.EpisodeNumber,
+            DateAddedUtc = candidate.DateAddedUtc,
             Path = candidate.Path,
             Reason = candidate.Reason,
             AppliedRuleName = candidate.AppliedRuleName,

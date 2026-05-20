@@ -49,6 +49,7 @@ public sealed class CleanupEvaluationService
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
     private readonly PendingDeletionQueueService _pendingDeletionQueueService;
+    private readonly IJellystatClient _jellystatClient;
     private readonly ILogger<CleanupEvaluationService> _logger;
 
     public CleanupEvaluationService(
@@ -56,16 +57,18 @@ public sealed class CleanupEvaluationService
         IUserManager userManager,
         IUserDataManager userDataManager,
         PendingDeletionQueueService pendingDeletionQueueService,
+        IJellystatClient jellystatClient,
         ILogger<CleanupEvaluationService> logger)
     {
         _libraryManager = libraryManager;
         _userManager = userManager;
         _userDataManager = userDataManager;
         _pendingDeletionQueueService = pendingDeletionQueueService;
+        _jellystatClient = jellystatClient;
         _logger = logger;
     }
 
-    public Task<CleanupEvaluationSummary> EvaluateAsync(PluginConfiguration configuration, CancellationToken cancellationToken, int? candidateDetailLimit = null)
+    public async Task<CleanupEvaluationSummary> EvaluateAsync(PluginConfiguration configuration, CancellationToken cancellationToken, int? candidateDetailLimit = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
@@ -89,6 +92,7 @@ public sealed class CleanupEvaluationService
         var users = _userManager.Users.ToArray();
         var now = DateTime.UtcNow;
         var pendingEntriesById = _pendingDeletionQueueService.GetEntriesByItemId();
+        var jellystatPlayback = await _jellystatClient.GetPlaybackSnapshotAsync(configuration, cancellationToken).ConfigureAwait(false);
 
         var candidates = new List<CleanupCandidate>();
         var episodeOutcomesByGroup = new Dictionary<string, List<ItemEvaluationOutcome>>(StringComparer.Ordinal);
@@ -97,7 +101,7 @@ public sealed class CleanupEvaluationService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var outcome = EvaluateItem(item, configuration, users, now, pendingEntriesById);
+            var outcome = EvaluateItem(item, configuration, users, now, pendingEntriesById, jellystatPlayback);
             if (outcome is null)
             {
                 continue;
@@ -126,7 +130,19 @@ public sealed class CleanupEvaluationService
         {
             if (groupOutcomes.All(outcome => outcome.Candidate is not null))
             {
+                _logger.LogDebug(
+                    "TV cleanup group qualified. Scope={Scope}, Episodes={EpisodeCount}",
+                    configuration.TvCleanupScope,
+                    groupOutcomes.Count);
                 candidates.AddRange(groupOutcomes.Select(outcome => outcome.Candidate!));
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "TV cleanup group skipped because not every episode qualified. Scope={Scope}, Qualified={QualifiedCount}, Total={TotalCount}",
+                    configuration.TvCleanupScope,
+                    groupOutcomes.Count(outcome => outcome.Candidate is not null),
+                    groupOutcomes.Count);
             }
         }
 
@@ -148,7 +164,7 @@ public sealed class CleanupEvaluationService
             normalizedDetailLimit = 0;
         }
 
-        return Task.FromResult(new CleanupEvaluationSummary
+        return new CleanupEvaluationSummary
         {
             GeneratedAtUtc = now,
             ScannedItemCount = items.Count,
@@ -160,7 +176,7 @@ public sealed class CleanupEvaluationService
             CandidatesByItemType = BuildBuckets(orderedCandidates, candidate => candidate.ItemType),
             CandidatesByReason = BuildBuckets(orderedCandidates, candidate => candidate.Reason),
             Candidates = orderedCandidates.Take(normalizedDetailLimit).ToArray(),
-        });
+        };
     }
 
     private static CleanupCountBucket[] BuildBuckets(IEnumerable<CleanupCandidate> candidates, Func<CleanupCandidate, string?> selector, int? limit = null)
@@ -233,10 +249,12 @@ public sealed class CleanupEvaluationService
         PluginConfiguration configuration,
         IReadOnlyList<User> users,
         DateTime now,
-        IReadOnlyDictionary<Guid, PendingDeletionEntry> pendingEntriesById)
+        IReadOnlyDictionary<Guid, PendingDeletionEntry> pendingEntriesById,
+        JellystatPlaybackSnapshot jellystatPlayback)
     {
         if (ShouldSkipItem(item, configuration))
         {
+            _logger.LogDebug("Skipping {ItemName} ({ItemId}) because it is a folder, missing a path, or has the protected tag.", item.Name, item.Id);
             return null;
         }
 
@@ -258,6 +276,11 @@ public sealed class CleanupEvaluationService
 
             if (configuration.KeepFavorites && userData.IsFavorite)
             {
+                _logger.LogDebug(
+                    "Skipping {ItemName} ({ItemId}) because user {UserName} marked it as favorite.",
+                    item.Name,
+                    item.Id,
+                    user.Username ?? "Unknown user");
                 return new ItemEvaluationOutcome
                 {
                     Item = item,
@@ -266,7 +289,7 @@ public sealed class CleanupEvaluationService
 
             if (userData.Played || userData.PlayCount > 0 || userData.LastPlayedDate.HasValue)
             {
-                userNames.Add(user.Username ?? "Unknown user");
+                AddUserName(userNames, user.Username ?? "Unknown user");
             }
 
             if (userData.LastPlayedDate.HasValue
@@ -275,6 +298,8 @@ public sealed class CleanupEvaluationService
                 latestPlayed = userData.LastPlayedDate.Value;
             }
         }
+
+        ApplyJellystatPlayback(item, configuration, jellystatPlayback, userNames, ref latestPlayed);
 
         var addedUtc = NormalizeUtc(item.DateCreated);
         var libraryName = _libraryManager.GetCollectionFolders(item).FirstOrDefault()?.Name;
@@ -288,6 +313,13 @@ public sealed class CleanupEvaluationService
 
         if (watchedCutoff.HasValue && latestPlayed.HasValue && latestPlayed.Value <= watchedCutoff.Value)
         {
+            _logger.LogDebug(
+                "{ItemName} ({ItemId}) qualifies by watched retention. LastPlayed={LastPlayed:u}, Cutoff={Cutoff:u}, Rule={RuleName}",
+                item.Name,
+                item.Id,
+                latestPlayed.Value,
+                watchedCutoff.Value,
+                resolvedRules.WatchedRuleName);
             return new ItemEvaluationOutcome
             {
                 Item = item,
@@ -297,6 +329,13 @@ public sealed class CleanupEvaluationService
 
         if (neverWatchedCutoff.HasValue && !latestPlayed.HasValue && addedUtc.HasValue && addedUtc.Value <= neverWatchedCutoff.Value)
         {
+            _logger.LogDebug(
+                "{ItemName} ({ItemId}) qualifies by never-watched retention. Added={Added:u}, Cutoff={Cutoff:u}, Rule={RuleName}",
+                item.Name,
+                item.Id,
+                addedUtc.Value,
+                neverWatchedCutoff.Value,
+                resolvedRules.NeverWatchedRuleName);
             return new ItemEvaluationOutcome
             {
                 Item = item,
@@ -304,10 +343,110 @@ public sealed class CleanupEvaluationService
             };
         }
 
+        _logger.LogDebug(
+            "{ItemName} ({ItemId}) does not qualify. Added={Added:u}, LastPlayed={LastPlayed:u}, WatchedCutoff={WatchedCutoff:u}, NeverWatchedCutoff={NeverWatchedCutoff:u}",
+            item.Name,
+            item.Id,
+            addedUtc,
+            latestPlayed,
+            watchedCutoff,
+            neverWatchedCutoff);
+
         return new ItemEvaluationOutcome
         {
             Item = item,
         };
+    }
+
+    private void ApplyJellystatPlayback(
+        BaseItem item,
+        PluginConfiguration configuration,
+        JellystatPlaybackSnapshot jellystatPlayback,
+        List<string> userNames,
+        ref DateTime? latestPlayed)
+    {
+        if (jellystatPlayback.IsEmpty)
+        {
+            _logger.LogDebug("Jellystat playback unavailable for {ItemName} ({ItemId}); using Jellyfin user data only.", item.Name, item.Id);
+            return;
+        }
+
+        var runtimeSeconds = GetRuntimeSeconds(item);
+        if (!runtimeSeconds.HasValue)
+        {
+            _logger.LogDebug("Jellystat playback skipped for {ItemName} ({ItemId}) because runtime is unavailable.", item.Name, item.Id);
+            return;
+        }
+
+        var itemId = GetJellystatItemId(item);
+        if (itemId is null || !jellystatPlayback.RecordsByItemId.TryGetValue(itemId, out var records))
+        {
+            _logger.LogDebug("No Jellystat playback records found for {ItemName} ({ItemId}).", item.Name, item.Id);
+            return;
+        }
+
+        var thresholdPercent = configuration.JellystatWatchedThresholdPercent is > 0 and <= 100
+            ? configuration.JellystatWatchedThresholdPercent
+            : 90;
+        var minimumPlaybackSeconds = runtimeSeconds.Value * (thresholdPercent / 100.0);
+
+        foreach (var record in records.Where(record => record.PlaybackSeconds >= minimumPlaybackSeconds))
+        {
+            _logger.LogDebug(
+                "Jellystat marked {ItemName} ({ItemId}) watched for user {UserName}. PlaybackSeconds={PlaybackSeconds}, RuntimeSeconds={RuntimeSeconds}, ThresholdPercent={ThresholdPercent}",
+                item.Name,
+                item.Id,
+                record.UserName,
+                record.PlaybackSeconds,
+                runtimeSeconds.Value,
+                thresholdPercent);
+            AddUserName(userNames, record.UserName);
+
+            if (record.LastPlayedUtc.HasValue
+                && (!latestPlayed.HasValue || record.LastPlayedUtc.Value > latestPlayed.Value))
+            {
+                latestPlayed = record.LastPlayedUtc.Value;
+            }
+        }
+
+        if (!records.Any(record => record.PlaybackSeconds >= minimumPlaybackSeconds))
+        {
+            _logger.LogDebug(
+                "Jellystat records for {ItemName} ({ItemId}) did not meet watched threshold. MaxPlaybackSeconds={MaxPlaybackSeconds}, RuntimeSeconds={RuntimeSeconds}, ThresholdPercent={ThresholdPercent}",
+                item.Name,
+                item.Id,
+                records.Count == 0 ? 0 : records.Max(record => record.PlaybackSeconds),
+                runtimeSeconds.Value,
+                thresholdPercent);
+        }
+    }
+
+    private static string? GetJellystatItemId(BaseItem item)
+    {
+        return JellystatClient.NormalizeJellyfinItemId(item.Id.ToString("N", CultureInfo.InvariantCulture));
+    }
+
+    private static double? GetRuntimeSeconds(BaseItem item)
+    {
+        if (item.RunTimeTicks <= 0)
+        {
+            return null;
+        }
+
+        return item.RunTimeTicks / 10000000.0;
+    }
+
+    private static void AddUserName(List<string> userNames, string userName)
+    {
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            return;
+        }
+
+        if (!userNames.Contains(userName, StringComparer.OrdinalIgnoreCase))
+        {
+            userNames.Add(userName);
+        }
     }
 
     private static ResolvedCleanupRules ResolveRules(PluginConfiguration configuration, BaseItem item, string? libraryName)
@@ -556,6 +695,7 @@ public sealed class CleanupEvaluationService
             LibraryName = libraryName,
             SeriesName = item is Episode episode ? episode.Series?.Name : null,
             SeasonName = item is Episode episodeForSeason ? episodeForSeason.Season?.Name : null,
+            ProductionYear = item is Episode episodeForYear ? episodeForYear.Series?.ProductionYear : item.ProductionYear,
             SeasonNumber = item is Episode episodeForNumbers ? episodeForNumbers.ParentIndexNumber : null,
             EpisodeNumber = item is Episode episodeForEpisodeNumber ? episodeForEpisodeNumber.IndexNumber : null,
             SeriesPath = item is Episode episodeForPath ? episodeForPath.Series?.Path : null,

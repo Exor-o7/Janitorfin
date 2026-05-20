@@ -25,6 +25,8 @@ public sealed class CleanupCandidate
 
     public string? SeasonName { get; init; }
 
+    public int? ProductionYear { get; init; }
+
     public int? SeasonNumber { get; init; }
 
     public int? EpisodeNumber { get; init; }
@@ -204,6 +206,14 @@ public sealed class PendingDeletionEntry
     public string? SeriesName { get; set; }
 
     public string? SeasonName { get; set; }
+
+    public int? ProductionYear { get; set; }
+
+    public int? SeasonNumber { get; set; }
+
+    public int? EpisodeNumber { get; set; }
+
+    public DateTime? DateAddedUtc { get; set; }
 
     public string? Path { get; set; }
 

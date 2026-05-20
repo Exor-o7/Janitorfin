@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Janitorfin.Plugin.Configuration;
@@ -30,11 +31,11 @@ internal abstract class ArrClientBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    private readonly ILogger _logger;
+    protected ILogger Logger { get; }
 
     protected ArrClientBase(ILogger logger)
     {
-        _logger = logger;
+        Logger = logger;
     }
 
     protected async Task<IntegrationTestResult> TestConnectionInternalAsync(string productName, string serverUrl, string apiKey, CancellationToken cancellationToken)
@@ -84,7 +85,7 @@ internal abstract class ArrClientBase
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "{ProductName} connection test failed", productName);
+            Logger.LogWarning(ex, "{ProductName} connection test failed", productName);
             return new IntegrationTestResult
             {
                 Success = false,
@@ -124,7 +125,7 @@ internal abstract class ArrClientBase
         var client = new HttpClient
         {
             BaseAddress = baseUri,
-            Timeout = TimeSpan.FromSeconds(20),
+            Timeout = TimeSpan.FromSeconds(60),
         };
         client.DefaultRequestHeaders.Add("X-Api-Key", apiKey.Trim());
         client.DefaultRequestHeaders.Add("Accept", "application/json");
@@ -200,6 +201,7 @@ internal sealed class RadarrClient : ArrClientBase, IRadarrClient
 
         using var client = CreateHttpClient(baseUri!, configuration.RadarrApiKey);
         var movies = await GetArrayAsync(client, "api/v3/movie", cancellationToken).ConfigureAwait(false);
+        Logger.LogDebug("Fetched {MovieCount} Radarr movies while matching {ItemName} ({ItemId}).", movies.Count, candidate.ItemName, candidate.ItemId);
         var match = movies.FirstOrDefault(movie => MatchesRadarrMovie(movie, candidate));
 
         if (match.ValueKind == JsonValueKind.Undefined)
@@ -217,6 +219,7 @@ internal sealed class RadarrClient : ArrClientBase, IRadarrClient
             return new ArrActionResult { Success = false, Message = "Matching Radarr movie did not expose an id." };
         }
 
+        Logger.LogDebug("Matched {ItemName} ({ItemId}) to Radarr movie id {RadarrId}.", candidate.ItemName, candidate.ItemId, radarrId.Value);
         using var response = await PutJsonAsync(client, "api/v3/movie/editor", new
         {
             movieIds = new[] { radarrId.Value },
@@ -289,6 +292,7 @@ internal sealed class SonarrClient : ArrClientBase, ISonarrClient
 
         using var client = CreateHttpClient(baseUri!, configuration.SonarrApiKey);
         var series = await GetArrayAsync(client, "api/v3/series", cancellationToken).ConfigureAwait(false);
+        Logger.LogDebug("Fetched {SeriesCount} Sonarr series while matching {ItemName} ({ItemId}).", series.Count, candidate.ItemName, candidate.ItemId);
         var match = series.FirstOrDefault(show => MatchesSonarrSeries(show, candidate));
 
         if (match.ValueKind == JsonValueKind.Undefined)
@@ -306,11 +310,11 @@ internal sealed class SonarrClient : ArrClientBase, ISonarrClient
             return new ArrActionResult { Success = false, Message = "Matching Sonarr series did not expose an id." };
         }
 
+        Logger.LogDebug("Matched {ItemName} ({ItemId}) to Sonarr series id {SonarrId}.", candidate.ItemName, candidate.ItemId, sonarrId.Value);
         return configuration.SonarrUnmonitorScope switch
         {
             SonarrUnmonitorScope.Series => await UnmonitorSeriesAsync(client, sonarrId.Value, cancellationToken).ConfigureAwait(false),
-            SonarrUnmonitorScope.Season => await UnmonitorSeasonAsync(client, sonarrId.Value, candidate, cancellationToken).ConfigureAwait(false),
-            _ => await UnmonitorEpisodeAsync(client, sonarrId.Value, candidate, cancellationToken).ConfigureAwait(false),
+            _ => await UnmonitorSeasonAsync(client, sonarrId.Value, candidate, cancellationToken).ConfigureAwait(false),
         };
     }
 
@@ -352,11 +356,38 @@ internal sealed class SonarrClient : ArrClientBase, ISonarrClient
             };
         }
 
-        using var response = await PutJsonAsync(client, string.Format(CultureInfo.InvariantCulture, "api/v3/series/{0}/season", sonarrId), new
+        var seriesPath = string.Format(CultureInfo.InvariantCulture, "api/v3/series/{0}", sonarrId);
+        using var seriesResponse = await client.GetAsync(seriesPath, cancellationToken).ConfigureAwait(false);
+        if (!seriesResponse.IsSuccessStatusCode)
         {
-            seasonNumber = candidate.SeasonNumber.Value,
-            monitored = false,
-        }, cancellationToken).ConfigureAwait(false);
+            return new ArrActionResult
+            {
+                Success = false,
+                RemoteId = sonarrId,
+                Message = string.Format(CultureInfo.InvariantCulture, "Sonarr series lookup failed with HTTP {0}.", (int)seriesResponse.StatusCode),
+            };
+        }
+
+        var payload = await seriesResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var seriesObject = JsonNode.Parse(payload)?.AsObject();
+        var seasons = seriesObject?["seasons"]?.AsArray();
+        var season = seasons?.FirstOrDefault(node =>
+            node?["seasonNumber"]?.GetValue<int>() == candidate.SeasonNumber.Value);
+
+        if (seriesObject is null || season is null)
+        {
+            return new ArrActionResult
+            {
+                Success = false,
+                RemoteId = sonarrId,
+                Message = string.Format(CultureInfo.InvariantCulture, "Sonarr series {0} did not expose season {1}.", sonarrId, candidate.SeasonNumber.Value),
+            };
+        }
+
+        season["monitored"] = false;
+        seriesObject["monitored"] = false;
+
+        using var response = await PutJsonAsync(client, seriesPath, seriesObject, cancellationToken).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -372,61 +403,7 @@ internal sealed class SonarrClient : ArrClientBase, ISonarrClient
         {
             Success = true,
             RemoteId = sonarrId,
-            Message = string.Format(CultureInfo.InvariantCulture, "Sonarr series {0} season {1} set to unmonitored.", sonarrId, candidate.SeasonNumber.Value),
-        };
-    }
-
-    private static async Task<ArrActionResult> UnmonitorEpisodeAsync(HttpClient client, int sonarrId, CleanupCandidate candidate, CancellationToken cancellationToken)
-    {
-        var episodes = await GetArrayAsync(
-            client,
-            string.Format(CultureInfo.InvariantCulture, "api/v3/episode?seriesId={0}&includeEpisodeFile=true", sonarrId),
-            cancellationToken).ConfigureAwait(false);
-
-        var match = episodes.FirstOrDefault(episode => MatchesSonarrEpisode(episode, candidate));
-
-        if (match.ValueKind == JsonValueKind.Undefined)
-        {
-            return new ArrActionResult
-            {
-                Success = false,
-                RemoteId = sonarrId,
-                Message = "No matching Sonarr episode was found.",
-            };
-        }
-
-        var episodeId = GetInt32(match, "id");
-        if (!episodeId.HasValue)
-        {
-            return new ArrActionResult
-            {
-                Success = false,
-                RemoteId = sonarrId,
-                Message = "Matching Sonarr episode did not expose an id.",
-            };
-        }
-
-        using var response = await PutJsonAsync(client, "api/v3/episode/monitor", new
-        {
-            episodeIds = new[] { episodeId.Value },
-            monitored = false,
-        }, cancellationToken).ConfigureAwait(false);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return new ArrActionResult
-            {
-                Success = false,
-                RemoteId = episodeId,
-                Message = string.Format(CultureInfo.InvariantCulture, "Sonarr episode unmonitor failed with HTTP {0}.", (int)response.StatusCode),
-            };
-        }
-
-        return new ArrActionResult
-        {
-            Success = true,
-            RemoteId = episodeId,
-            Message = string.Format(CultureInfo.InvariantCulture, "Sonarr episode {0} set to unmonitored.", episodeId.Value),
+            Message = string.Format(CultureInfo.InvariantCulture, "Sonarr series {0} and season {1} set to unmonitored.", sonarrId, candidate.SeasonNumber.Value),
         };
     }
 
@@ -451,26 +428,4 @@ internal sealed class SonarrClient : ArrClientBase, ISonarrClient
             || string.Equals(GetString(series, "title"), candidate.SeriesName, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool MatchesSonarrEpisode(JsonElement episode, CleanupCandidate candidate)
-    {
-        if (candidate.TvdbId is not null && GetInt32(episode, "tvdbId")?.ToString(CultureInfo.InvariantCulture) == candidate.TvdbId)
-        {
-            return true;
-        }
-
-        if (candidate.SeasonNumber.HasValue
-            && candidate.EpisodeNumber.HasValue
-            && GetInt32(episode, "seasonNumber") == candidate.SeasonNumber
-            && GetInt32(episode, "episodeNumber") == candidate.EpisodeNumber)
-        {
-            return true;
-        }
-
-        if (episode.TryGetProperty("episodeFile", out var episodeFile) && PathEquals(GetString(episodeFile, "path"), candidate.Path))
-        {
-            return true;
-        }
-
-        return false;
-    }
 }

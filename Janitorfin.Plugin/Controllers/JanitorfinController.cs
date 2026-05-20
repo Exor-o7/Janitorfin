@@ -23,6 +23,7 @@ public class JanitorfinController : ControllerBase
     private readonly PendingDeletionQueueService _pendingDeletionQueueService;
     private readonly IRadarrClient _radarrClient;
     private readonly ISonarrClient _sonarrClient;
+    private readonly IJellystatClient _jellystatClient;
     private readonly ITaskManager _taskManager;
     private readonly ILogger<JanitorfinController> _logger;
 
@@ -32,6 +33,7 @@ public class JanitorfinController : ControllerBase
         PendingDeletionQueueService pendingDeletionQueueService,
         IRadarrClient radarrClient,
         ISonarrClient sonarrClient,
+        IJellystatClient jellystatClient,
         ITaskManager taskManager,
         ILogger<JanitorfinController> logger)
     {
@@ -40,6 +42,7 @@ public class JanitorfinController : ControllerBase
         _pendingDeletionQueueService = pendingDeletionQueueService;
         _radarrClient = radarrClient;
         _sonarrClient = sonarrClient;
+        _jellystatClient = jellystatClient;
         _taskManager = taskManager;
         _logger = logger;
     }
@@ -89,6 +92,32 @@ public class JanitorfinController : ControllerBase
         }
     }
 
+    [HttpPost("ScanPending")]
+    public async Task<ActionResult<CleanupExecutionSummary>> ScanPendingSavedConfiguration([FromQuery] bool? dryRun, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _cleanupExecutionService.ScanAndQueuePendingAsync(Plugin.Instance!.Configuration, dryRun, cancellationToken).ConfigureAwait(false);
+        }
+        catch (System.Exception ex)
+        {
+            return CreateErrorResult(ex, "Scan pending with saved configuration failed.");
+        }
+    }
+
+    [HttpPost("DeleteDuePending")]
+    public async Task<ActionResult<CleanupExecutionSummary>> DeleteDuePendingSavedConfiguration([FromQuery] bool? dryRun, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _cleanupExecutionService.DeleteDuePendingAsync(Plugin.Instance!.Configuration, dryRun, cancellationToken).ConfigureAwait(false);
+        }
+        catch (System.Exception ex)
+        {
+            return CreateErrorResult(ex, "Delete due pending with saved configuration failed.");
+        }
+    }
+
     [HttpPost("Execute/WithConfiguration")]
     public async Task<ActionResult<CleanupExecutionSummary>> ExecuteWithConfiguration([FromQuery] bool? dryRun, [FromBody] PluginConfiguration? configuration, CancellationToken cancellationToken)
     {
@@ -102,15 +131,41 @@ public class JanitorfinController : ControllerBase
         }
     }
 
+    [HttpPost("Tasks/ScanPending/Run")]
+    public ActionResult<CleanupTaskStartResult> RunScanPendingTask()
+    {
+        return RunTask(
+            task => task.ScheduledTask is ScanPendingDeletionTask
+                || string.Equals(task.ScheduledTask.Key, "JanitorfinScanPending", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(task.Name, "Janitorfin Scan Pending Deletions", StringComparison.OrdinalIgnoreCase),
+            "Janitorfin scan pending task is not available.",
+            "Run scan pending task failed.",
+            "Janitorfin pending scan");
+    }
+
+    [HttpPost("Tasks/DeleteDuePending/Run")]
+    public ActionResult<CleanupTaskStartResult> RunDeleteDuePendingTask()
+    {
+        return RunTask(
+            task => task.ScheduledTask is DeleteDuePendingTask
+                || string.Equals(task.ScheduledTask.Key, "JanitorfinDeleteDuePending", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(task.Name, "Janitorfin Delete Due Pending Items", StringComparison.OrdinalIgnoreCase),
+            "Janitorfin delete due pending task is not available.",
+            "Run delete due pending task failed.",
+            "Janitorfin delete due pending");
+    }
+
     [HttpPost("Tasks/Cleanup/Run")]
     public ActionResult<CleanupTaskStartResult> RunCleanupTask()
     {
+        return RunDeleteDuePendingTask();
+    }
+
+    private ActionResult<CleanupTaskStartResult> RunTask(Func<IScheduledTaskWorker, bool> predicate, string unavailableMessage, string errorContext, string actionName)
+    {
         try
         {
-            var task = _taskManager.ScheduledTasks.FirstOrDefault(worker =>
-                worker.ScheduledTask is LibraryMaintenanceTask
-                || string.Equals(worker.ScheduledTask.Key, "JanitorfinCleanup", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(worker.Name, "Janitorfin Cleanup", StringComparison.OrdinalIgnoreCase));
+            var task = _taskManager.ScheduledTasks.FirstOrDefault(predicate);
 
             if (task is null)
             {
@@ -118,23 +173,23 @@ public class JanitorfinController : ControllerBase
                     500,
                     new
                     {
-                        message = "Janitorfin cleanup task is not available.",
-                        context = "Run cleanup task failed.",
+                        message = unavailableMessage,
+                        context = errorContext,
                     });
             }
 
             if (task.State is TaskState.Running or TaskState.Cancelling)
             {
-                return CreateCleanupTaskStartResult(task, started: false, alreadyRunning: true);
+                return CreateCleanupTaskStartResult(task, actionName, started: false, alreadyRunning: true);
             }
 
             _ = _taskManager.Execute(task, new TaskOptions());
 
-            return CreateCleanupTaskStartResult(task, started: true, alreadyRunning: false);
+            return CreateCleanupTaskStartResult(task, actionName, started: true, alreadyRunning: false);
         }
         catch (Exception ex)
         {
-            return CreateErrorResult(ex, "Run cleanup task failed.");
+            return CreateErrorResult(ex, errorContext);
         }
     }
 
@@ -156,20 +211,26 @@ public class JanitorfinController : ControllerBase
         return _sonarrClient.TestConnectionAsync(Plugin.Instance!.Configuration, cancellationToken);
     }
 
-    private static CleanupTaskStartResult CreateCleanupTaskStartResult(IScheduledTaskWorker task, bool started, bool alreadyRunning)
+    [HttpPost("Test/Jellystat")]
+    public Task<IntegrationTestResult> TestJellystat(CancellationToken cancellationToken)
+    {
+        return _jellystatClient.TestConnectionAsync(Plugin.Instance!.Configuration, cancellationToken);
+    }
+
+    private static CleanupTaskStartResult CreateCleanupTaskStartResult(IScheduledTaskWorker task, string actionName, bool started, bool alreadyRunning)
     {
         var configuration = Plugin.Instance?.Configuration;
         var dryRun = configuration?.DryRun ?? true;
         var stateText = task.State.ToString();
         var message = started
             ? dryRun
-                ? "Janitorfin dry run was started. Check Dashboard > Scheduled Tasks for progress."
-                : "Janitorfin cleanup was started. Check Dashboard > Scheduled Tasks for progress."
+                ? actionName + " dry run was started. Check Dashboard > Scheduled Tasks for progress."
+                : actionName + " was started. Check Dashboard > Scheduled Tasks for progress."
             : alreadyRunning
                 ? dryRun
-                    ? "Janitorfin dry run is already running. Check Dashboard > Scheduled Tasks for progress."
-                    : "Janitorfin cleanup is already running. Check Dashboard > Scheduled Tasks for progress."
-                : "Janitorfin cleanup task state is unchanged.";
+                    ? actionName + " dry run is already running. Check Dashboard > Scheduled Tasks for progress."
+                    : actionName + " is already running. Check Dashboard > Scheduled Tasks for progress."
+                : actionName + " task state is unchanged.";
 
         return new CleanupTaskStartResult
         {

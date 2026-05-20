@@ -3,12 +3,98 @@
 <head>
     <meta charset="utf-8">
     <title>Janitorfin</title>
+    <style>
+        .janitorfin-layout {
+            display: grid;
+            grid-template-columns: minmax(20rem, 0.95fr) minmax(24rem, 1.35fr);
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .janitorfin-operations {
+            position: sticky;
+            top: 1rem;
+        }
+
+        .janitorfin-tabs {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .janitorfin-tab-button {
+            opacity: 0.75;
+        }
+
+        .janitorfin-tab-button.is-active {
+            opacity: 1;
+            outline: 1px solid rgba(255,255,255,0.28);
+        }
+
+        .janitorfin-tab-panel {
+            display: none;
+        }
+
+        .janitorfin-tab-panel.is-active {
+            display: block;
+        }
+
+        .janitorfin-result-section {
+            margin-top: 1rem;
+        }
+
+        .janitorfin-result-heading {
+            font-weight: 600;
+            margin: 1rem 0 0.5rem;
+        }
+
+        .janitorfin-result-row {
+            padding: 0.75rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .janitorfin-result-title {
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+        }
+
+        .janitorfin-result-meta {
+            display: flex;
+            gap: 0.5rem 1rem;
+            flex-wrap: wrap;
+        }
+
+        .janitorfin-chip {
+            display: inline-block;
+            padding: 0.12rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 70rem) {
+            .janitorfin-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .janitorfin-operations {
+                position: static;
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="JanitorfinConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
-        <div data-role="content">
-            <div class="content-primary">
-                <form id="JanitorfinConfigForm">
+        <div data-role="content" style="max-width: none; width: 100%; box-sizing: border-box;">
+            <div class="content-primary" style="max-width: none !important; width: 100% !important;">
+                <form id="JanitorfinConfigForm" style="max-width: none !important; width: 100% !important;">
+                    <div id="JanitorfinLayout" class="janitorfin-layout" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; width: 100% !important; max-width: none !important; box-sizing: border-box;">
+                        <div class="janitorfin-settings" style="min-width: 0;">
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
                         <legend><h2>Cleanup Options</h2></legend>
 
@@ -58,6 +144,24 @@
 
                         <div class="fieldDescription" style="margin-top: 0.75em;">
                             Janitorfin always mirrors staged items into the Jellyfin collection <strong>Removing Soon</strong> so users can browse the list like normal media and protect items by watching or favoriting them.
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Discord Notifications</h2></legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableDiscordGracePeriodNotifications" name="EnableDiscordGracePeriodNotifications" type="checkbox" is="emby-checkbox" />
+                                <span>Notify Discord after each scan</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">When enabled, Janitorfin posts the media currently in the pending deletion grace period after each cleanup scan.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="DiscordWebhookUrl">Discord webhook URL</label>
+                            <input id="DiscordWebhookUrl" name="DiscordWebhookUrl" type="password" is="emby-input" />
+                            <div class="fieldDescription">Create a Discord channel webhook, then paste its URL here.</div>
                         </div>
                     </fieldset>
 
@@ -138,6 +242,48 @@
                     </fieldset>
 
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Jellystat</h2></legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableJellystatIntegration" name="EnableJellystatIntegration" type="checkbox" is="emby-checkbox" />
+                                <span>Use Jellystat playback duration for watched status</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">When enabled, Janitorfin treats an item as watched if Jellystat history shows playback duration at or above the threshold. Jellyfin user data is still used as a fallback.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="JellystatServerUrl">Server URL</label>
+                            <input id="JellystatServerUrl" name="JellystatServerUrl" type="text" is="emby-input" />
+                            <div class="fieldDescription">Example: http://jellystat:3000</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="JellystatApiKey">API key</label>
+                            <input id="JellystatApiKey" name="JellystatApiKey" type="password" is="emby-input" />
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="JellystatWatchedThresholdPercent">Watched threshold percent</label>
+                            <input id="JellystatWatchedThresholdPercent" name="JellystatWatchedThresholdPercent" type="number" is="emby-input" min="1" max="100" />
+                            <div class="fieldDescription">Use 90 to match your Jellyfin watched threshold.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="JellystatMaxHistoryPages">Max history pages</label>
+                            <input id="JellystatMaxHistoryPages" name="JellystatMaxHistoryPages" type="number" is="emby-input" min="1" />
+                            <div class="fieldDescription">Janitorfin reads Jellystat history in pages of 1000 rows during preview and cleanup.</div>
+                        </div>
+
+                        <div>
+                            <button id="TestJellystatConnection" is="emby-button" type="button" class="raised emby-button">
+                                <span>Test Jellystat Connection</span>
+                            </button>
+                        </div>
+                        <div id="JellystatTestResult" class="fieldDescription" style="margin-top: 0.75em;"></div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
                         <legend><h2>Sonarr</h2></legend>
 
                         <div class="checkboxContainer checkboxContainer-withDescription">
@@ -175,11 +321,10 @@
                         <div class="selectContainer">
                             <label class="selectLabel" for="SonarrUnmonitorScope">Sonarr unmonitor scope</label>
                             <select id="SonarrUnmonitorScope" is="emby-select">
-                                <option value="0">Episode</option>
                                 <option value="1">Season</option>
                                 <option value="2">Series</option>
                             </select>
-                            <div class="fieldDescription">This is separate from TV cleanup match scope. Season is the recommended default for most libraries; Series is broader, and Episode is the narrowest option.</div>
+                            <div class="fieldDescription">This is separate from TV cleanup match scope. Season marks the deleted season and parent series unmonitored to prevent future grabs; Series marks the whole show unmonitored.</div>
                         </div>
                     </fieldset>
 
@@ -188,48 +333,62 @@
                             <span>Save</span>
                         </button>
                     </div>
-
-                    <fieldset class="verticalSection verticalSection-extrabottompadding" style="margin-top: 1.5em;">
-                        <legend><h2>Inline Preview</h2></legend>
-
-                        <div class="fieldDescription" style="margin-bottom: 1em;">
-                            Preview responses now return aggregate counts plus the first 200 matching items, which keeps the page responsive even when thousands of candidates match.
                         </div>
 
-                        <div style="display: flex; gap: 0.75em; flex-wrap: wrap;">
+                        <div class="janitorfin-operations" style="min-width: 0; position: sticky; top: 1rem;">
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend><h2>Operations</h2></legend>
+
+                        <div class="janitorfin-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                            <button id="JanitorfinPreviewTab" is="emby-button" type="button" class="raised emby-button janitorfin-tab-button is-active" data-janitorfin-tab="PreviewPanel" style="opacity: 1; outline: 1px solid rgba(255,255,255,0.28);">
+                                <span>Preview</span>
+                            </button>
+                            <button id="JanitorfinCleanupTab" is="emby-button" type="button" class="raised emby-button janitorfin-tab-button" data-janitorfin-tab="CleanupPanel" style="opacity: 0.75;">
+                                <span>Cleanup</span>
+                            </button>
+                            <button id="JanitorfinPendingTab" is="emby-button" type="button" class="raised emby-button janitorfin-tab-button" data-janitorfin-tab="PendingPanel" style="opacity: 0.75;">
+                                <span>Pending List</span>
+                            </button>
+                        </div>
+
+                        <div id="PreviewPanel" class="janitorfin-tab-panel is-active" style="display: block;">
+                            <div class="fieldDescription" style="margin-bottom: 1em;">
+                                Preview shows media that matches the current form settings. It does not queue or delete anything.
+                            </div>
                             <button id="RefreshInlinePreviewButton" is="emby-button" type="button" class="raised emby-button">
                                 <span>Refresh Preview</span>
                             </button>
-                            <button id="RunInlineDryRunButton" is="emby-button" type="button" class="raised emby-button">
-                                <span>Run Dry Run Now</span>
-                            </button>
-                            <button id="RunInlineLiveCleanupButton" is="emby-button" type="button" class="raised emby-button">
-                                <span>Run Cleanup Now</span>
-                            </button>
+                            <div id="InlinePreviewSummary" class="fieldDescription" style="margin-top: 1em;"></div>
+                            <div id="InlinePreviewResults" style="margin-top: 1em;"></div>
                         </div>
 
-                        <div id="InlineExecutionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
-                        <div id="InlinePreviewSummary" class="fieldDescription" style="margin-top: 1em;"></div>
-                        <div id="InlinePreviewResults" style="margin-top: 1em;"></div>
-                        <pre id="InlineDebugDump" style="margin-top: 1em; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.4; padding: 0.75em; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.5rem; background: rgba(0,0,0,0.2);"></pre>
-                    </fieldset>
-
-                    <fieldset class="verticalSection verticalSection-extrabottompadding">
-                        <legend><h2>Pending Deletions</h2></legend>
-
-                        <div class="fieldDescription" style="margin-bottom: 1em;">
-                            This list shows items already staged for deletion. Janitorfin also syncs the same items into the Jellyfin collection <strong>Removing Soon</strong>. If they keep matching the rules until their deadline, the next live cleanup run will remove them.
+                        <div id="CleanupPanel" class="janitorfin-tab-panel" style="display: none;">
+                            <div class="fieldDescription" style="margin-bottom: 1em;">
+                                Cleanup saves the current form values, then starts one of Janitorfin's scheduled tasks. Scan Pending updates the pending list; Delete Due Pending removes only items whose saved grace deadline has elapsed.
+                            </div>
+                            <button id="RunScanPendingButton" is="emby-button" type="button" class="raised emby-button">
+                                <span>Scan Pending Now</span>
+                            </button>
+                            <button id="RunDeleteDuePendingButton" is="emby-button" type="button" class="raised emby-button" style="margin-left: 0.5em;">
+                                <span>Delete Due Pending Now</span>
+                            </button>
+                            <div id="InlineExecutionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
                         </div>
 
-                        <div>
+                        <div id="PendingPanel" class="janitorfin-tab-panel" style="display: none;">
+                            <div class="fieldDescription" style="margin-bottom: 1em;">
+                                Pending List shows media already staged for deletion. Janitorfin also mirrors these items into the Jellyfin collection <strong>Removing Soon</strong>.
+                            </div>
                             <button id="RefreshPendingDeletionButton" is="emby-button" type="button" class="raised emby-button">
-                                <span>Refresh Pending List</span>
+                                <span>Refresh</span>
                             </button>
+                            <div id="PendingDeletionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
+                            <div id="PendingDeletionResults" style="margin-top: 1em;"></div>
                         </div>
 
-                        <div id="PendingDeletionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
-                        <div id="PendingDeletionResults" style="margin-top: 1em;"></div>
                     </fieldset>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -237,7 +396,7 @@
         <script type="text/javascript">
             var JanitorfinConfig = {
                 pluginUniqueId: '8eab83a3-4377-4036-8b37-68bc4767bc9e',
-                pageVersion: '20260326e'
+                pageVersion: '20260326h'
             };
             var currentPluginConfig = null;
 
@@ -297,11 +456,29 @@
                 if (typeof config.EnableHomeScreenSectionsIntegration !== 'boolean') {
                     config.EnableHomeScreenSectionsIntegration = true;
                 }
+                if (typeof config.EnableDiscordGracePeriodNotifications !== 'boolean') {
+                    config.EnableDiscordGracePeriodNotifications = false;
+                }
+                if (typeof config.DiscordWebhookUrl !== 'string') {
+                    config.DiscordWebhookUrl = '';
+                }
                 if (typeof config.SonarrUnmonitorScope !== 'number') {
+                    config.SonarrUnmonitorScope = 1;
+                }
+                if (config.SonarrUnmonitorScope === 0) {
                     config.SonarrUnmonitorScope = 1;
                 }
                 if (typeof config.TvCleanupScope !== 'number') {
                     config.TvCleanupScope = 0;
+                }
+                if (typeof config.EnableJellystatIntegration !== 'boolean') {
+                    config.EnableJellystatIntegration = false;
+                }
+                if (typeof config.JellystatWatchedThresholdPercent !== 'number') {
+                    config.JellystatWatchedThresholdPercent = 90;
+                }
+                if (typeof config.JellystatMaxHistoryPages !== 'number') {
+                    config.JellystatMaxHistoryPages = 100;
                 }
 
                 return config;
@@ -337,15 +514,22 @@
                 config.EnablePendingDeletion = document.querySelector('#EnablePendingDeletion').checked;
                 config.PendingDeletionGraceDays = parseInt(document.querySelector('#PendingDeletionGraceDays').value || '30', 10);
                 config.EnableHomeScreenSectionsIntegration = document.querySelector('#EnableHomeScreenSectionsIntegration').checked;
+                config.EnableDiscordGracePeriodNotifications = document.querySelector('#EnableDiscordGracePeriodNotifications').checked;
+                config.DiscordWebhookUrl = document.querySelector('#DiscordWebhookUrl').value;
                 config.EnableRadarrIntegration = document.querySelector('#EnableRadarrIntegration').checked;
                 config.RadarrServerUrl = document.querySelector('#RadarrServerUrl').value;
                 config.RadarrApiKey = document.querySelector('#RadarrApiKey').value;
                 config.UnmonitorRadarrOnDelete = document.querySelector('#UnmonitorRadarrOnDelete').checked;
+                config.EnableJellystatIntegration = document.querySelector('#EnableJellystatIntegration').checked;
+                config.JellystatServerUrl = document.querySelector('#JellystatServerUrl').value;
+                config.JellystatApiKey = document.querySelector('#JellystatApiKey').value;
+                config.JellystatWatchedThresholdPercent = parseInt(document.querySelector('#JellystatWatchedThresholdPercent').value || '90', 10);
+                config.JellystatMaxHistoryPages = parseInt(document.querySelector('#JellystatMaxHistoryPages').value || '100', 10);
                 config.EnableSonarrIntegration = document.querySelector('#EnableSonarrIntegration').checked;
                 config.SonarrServerUrl = document.querySelector('#SonarrServerUrl').value;
                 config.SonarrApiKey = document.querySelector('#SonarrApiKey').value;
                 config.UnmonitorSonarrOnDelete = document.querySelector('#UnmonitorSonarrOnDelete').checked;
-                config.SonarrUnmonitorScope = parseInt(document.querySelector('#SonarrUnmonitorScope').value || '0', 10);
+                config.SonarrUnmonitorScope = parseInt(document.querySelector('#SonarrUnmonitorScope').value || '1', 10);
                 return config;
             }
 
@@ -588,6 +772,69 @@
                 debugElement.textContent = label + (text ? '\n' + text : '');
             }
 
+            function switchOperationsTab(panelId) {
+                document.querySelectorAll('#JanitorfinConfigPage .janitorfin-tab-panel').forEach(function (panel) {
+                    var isActive = panel.id === panelId;
+                    panel.classList.toggle('is-active', isActive);
+                    panel.style.display = isActive ? 'block' : 'none';
+                });
+
+                document.querySelectorAll('#JanitorfinConfigPage .janitorfin-tab-button').forEach(function (button) {
+                    var isActive = button.getAttribute('data-janitorfin-tab') === panelId;
+                    button.classList.toggle('is-active', isActive);
+                    button.style.opacity = isActive ? '1' : '0.75';
+                    button.style.outline = isActive ? '1px solid rgba(255,255,255,0.28)' : 'none';
+                });
+            }
+
+            function applyResponsiveLayout() {
+                var layout = document.querySelector('#JanitorfinLayout');
+                var operations = document.querySelector('#JanitorfinConfigPage .janitorfin-operations');
+                var content = document.querySelector('#JanitorfinConfigPage [data-role="content"]');
+                var primary = document.querySelector('#JanitorfinConfigPage .content-primary');
+                var form = document.querySelector('#JanitorfinConfigForm');
+                if (!layout || !operations) {
+                    return;
+                }
+
+                if (content) {
+                    content.style.maxWidth = 'none';
+                    content.style.boxSizing = 'border-box';
+                    var contentLeft = content.getBoundingClientRect().left;
+                    var availableWidth = Math.max(320, window.innerWidth - contentLeft - 24);
+                    content.style.width = availableWidth + 'px';
+                }
+
+                if (primary) {
+                    primary.style.maxWidth = 'none';
+                    primary.style.width = '100%';
+                    primary.style.boxSizing = 'border-box';
+                }
+
+                if (form) {
+                    form.style.maxWidth = 'none';
+                    form.style.width = '100%';
+                    form.style.boxSizing = 'border-box';
+                }
+
+                layout.style.maxWidth = 'none';
+                layout.style.width = '100%';
+                layout.style.boxSizing = 'border-box';
+                layout.querySelectorAll('fieldset').forEach(function (fieldset) {
+                    fieldset.style.minWidth = '0';
+                    fieldset.style.boxSizing = 'border-box';
+                });
+
+                if (window.innerWidth < 1120) {
+                    layout.style.gridTemplateColumns = '1fr';
+                    operations.style.position = 'static';
+                } else {
+                    layout.style.gridTemplateColumns = 'minmax(0, 1fr) minmax(0, 1fr)';
+                    operations.style.position = 'sticky';
+                    operations.style.top = '1rem';
+                }
+            }
+
             function formatEpisodeCode(candidate) {
                 var seasonNumber = getValue(candidate, 'seasonNumber', 'SeasonNumber');
                 var episodeNumber = getValue(candidate, 'episodeNumber', 'EpisodeNumber');
@@ -597,6 +844,225 @@
                 }
 
                 return 'S' + String(seasonNumber).padStart(2, '0') + 'E' + String(episodeNumber).padStart(2, '0');
+            }
+
+            function formatTitleWithYear(name, year) {
+                if (year) {
+                    return String(name || 'Unknown') + ' (' + year + ')';
+                }
+
+                return String(name || 'Unknown');
+            }
+
+            function renderMeta(label, value) {
+                if (!value) {
+                    return '';
+                }
+
+                return '<span style="display: inline-block; margin-right: 1rem; margin-bottom: 0.25rem;"><strong>' + escapeHtml(label) + ':</strong> ' + escapeHtml(value) + '</span>';
+            }
+
+            function getPendingSince(item, mode) {
+                return mode === 'pending'
+                    ? getValue(item, 'firstQualifiedUtc', 'FirstQualifiedUtc')
+                    : getValue(item, 'pendingSinceUtc', 'PendingSinceUtc');
+            }
+
+            function getDeleteAfter(item, mode) {
+                return mode === 'pending'
+                    ? getValue(item, 'deleteAfterUtc', 'DeleteAfterUtc')
+                    : getValue(item, 'pendingDeleteAfterUtc', 'PendingDeleteAfterUtc');
+            }
+
+            function getPreviewStatus(item) {
+                var isPendingDeletion = getValue(item, 'isPendingDeletion', 'IsPendingDeletion');
+                var deleteAfter = getValue(item, 'pendingDeleteAfterUtc', 'PendingDeleteAfterUtc');
+
+                if (!isPendingDeletion) {
+                    return 'Would be queued';
+                }
+
+                if (deleteAfter && new Date(deleteAfter).getTime() <= Date.now()) {
+                    return 'Due for deletion';
+                }
+
+                return 'Already pending';
+            }
+
+            function sortMediaRows(left, right) {
+                var leftSeries = getValue(left, 'seriesName', 'SeriesName') || getValue(left, 'itemName', 'ItemName') || '';
+                var rightSeries = getValue(right, 'seriesName', 'SeriesName') || getValue(right, 'itemName', 'ItemName') || '';
+                var seriesCompare = String(leftSeries).localeCompare(String(rightSeries));
+                if (seriesCompare !== 0) {
+                    return seriesCompare;
+                }
+
+                var leftSeason = getValue(left, 'seasonNumber', 'SeasonNumber') || 0;
+                var rightSeason = getValue(right, 'seasonNumber', 'SeasonNumber') || 0;
+                if (leftSeason !== rightSeason) {
+                    return leftSeason - rightSeason;
+                }
+
+                var leftEpisode = getValue(left, 'episodeNumber', 'EpisodeNumber') || 0;
+                var rightEpisode = getValue(right, 'episodeNumber', 'EpisodeNumber') || 0;
+                if (leftEpisode !== rightEpisode) {
+                    return leftEpisode - rightEpisode;
+                }
+
+                return String(getValue(left, 'itemName', 'ItemName') || '').localeCompare(String(getValue(right, 'itemName', 'ItemName') || ''));
+            }
+
+            function getTvGroupKey(item, scope) {
+                var seriesName = getValue(item, 'seriesName', 'SeriesName') || getValue(item, 'itemName', 'ItemName') || 'Unknown';
+                var productionYear = getValue(item, 'productionYear', 'ProductionYear') || '';
+                var seasonNumber = getValue(item, 'seasonNumber', 'SeasonNumber');
+                var seasonName = getValue(item, 'seasonName', 'SeasonName') || '';
+
+                if (String(scope) === '1') {
+                    return [seriesName, productionYear].join('|');
+                }
+
+                return [seriesName, productionYear, seasonNumber || seasonName || 'unknown'].join('|');
+            }
+
+            function groupEpisodesByCleanupScope(episodes) {
+                var scope = document.querySelector('#TvCleanupScope').value || '0';
+                var groups = {};
+
+                episodes.forEach(function (episode) {
+                    var key = getTvGroupKey(episode, scope);
+                    if (!groups[key]) {
+                        groups[key] = [];
+                    }
+
+                    groups[key].push(episode);
+                });
+
+                return Object.keys(groups).map(function (key) {
+                    var groupEpisodes = groups[key].sort(sortMediaRows);
+                    var first = groupEpisodes[0];
+                    var title = formatTitleWithYear(
+                        getValue(first, 'seriesName', 'SeriesName') || getValue(first, 'itemName', 'ItemName'),
+                        getValue(first, 'productionYear', 'ProductionYear'));
+                    var seasonNumber = getValue(first, 'seasonNumber', 'SeasonNumber');
+                    var seasonName = getValue(first, 'seasonName', 'SeasonName');
+
+                    if (String(scope) !== '1') {
+                        title += ' - ' + (seasonNumber ? 'Season ' + seasonNumber : (seasonName || 'Unknown season'));
+                    }
+
+                    return {
+                        title: title,
+                        episodes: groupEpisodes,
+                        representative: first
+                    };
+                }).sort(function (left, right) {
+                    return left.title.localeCompare(right.title);
+                });
+            }
+
+            function renderTvGroup(group, mode) {
+                var item = group.representative;
+                var pendingSinceUtc = getPendingSince(item, mode);
+                var deleteAfterUtc = getDeleteAfter(item, mode);
+                var appliedRuleName = getValue(item, 'appliedRuleName', 'AppliedRuleName');
+                var status = mode === 'preview' ? getPreviewStatus(item) : '';
+                var deadline = deleteAfterUtc
+                    ? formatDate(deleteAfterUtc) + ' (' + formatRelativeDeadline(deleteAfterUtc) + ')'
+                    : '';
+                var meta = [
+                    renderMeta('Episodes', String(group.episodes.length)),
+                    renderMeta('Added', formatDate(getValue(item, 'dateAddedUtc', 'DateAddedUtc'))),
+                    mode === 'preview' ? renderMeta('Last played', formatDate(getValue(item, 'lastPlayedDateUtc', 'LastPlayedDateUtc'))) : '',
+                    renderMeta('Delete after', deadline),
+                    renderMeta('Pending since', formatDate(pendingSinceUtc)),
+                    renderMeta('Rule', appliedRuleName)
+                ].filter(Boolean).join('');
+
+                return [
+                    '<div class="janitorfin-result-row" style="padding: 0.75rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.02);">',
+                    '<div class="janitorfin-result-title" style="font-weight: 600; margin-bottom: 0.35rem;">',
+                    escapeHtml(group.title),
+                    status ? ' <span class="janitorfin-chip" style="display: inline-block; padding: 0.12rem 0.45rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); font-size: 0.9em;">' + escapeHtml(status) + '</span>' : '',
+                    '</div>',
+                    '<div class="janitorfin-result-meta fieldDescription" style="line-height: 1.45;">' + meta + '</div>',
+                    '</div>'
+                ].join('');
+            }
+
+            function renderMediaRow(item, mode) {
+                var itemName = getValue(item, 'itemName', 'ItemName') || '';
+                var itemType = getValue(item, 'itemType', 'ItemType') || '';
+                var productionYear = getValue(item, 'productionYear', 'ProductionYear');
+                var seriesName = getValue(item, 'seriesName', 'SeriesName');
+                var seasonNumber = getValue(item, 'seasonNumber', 'SeasonNumber');
+                var episodeNumber = getValue(item, 'episodeNumber', 'EpisodeNumber');
+                var dateAddedUtc = getValue(item, 'dateAddedUtc', 'DateAddedUtc');
+                var lastPlayedDateUtc = getValue(item, 'lastPlayedDateUtc', 'LastPlayedDateUtc');
+                var pendingSinceUtc = getPendingSince(item, mode);
+                var deleteAfterUtc = getDeleteAfter(item, mode);
+                var appliedRuleName = getValue(item, 'appliedRuleName', 'AppliedRuleName');
+                var reason = getValue(item, 'reason', 'Reason');
+                var isEpisode = itemType === 'Episode';
+                var title = isEpisode
+                    ? formatTitleWithYear(seriesName || itemName, productionYear)
+                    : formatTitleWithYear(itemName, productionYear);
+                var episodeLabel = episodeNumber
+                    ? String(episodeNumber) + (isEpisode ? ' - ' + itemName : '')
+                    : isEpisode ? itemName : '';
+                var status = mode === 'preview' ? getPreviewStatus(item) : '';
+                var deadline = deleteAfterUtc
+                    ? formatDate(deleteAfterUtc) + ' (' + formatRelativeDeadline(deleteAfterUtc) + ')'
+                    : '';
+                var meta = [
+                    isEpisode ? renderMeta('Season', seasonNumber ? String(seasonNumber) : getValue(item, 'seasonName', 'SeasonName')) : '',
+                    isEpisode ? renderMeta('Episode', episodeLabel) : '',
+                    renderMeta('Added', formatDate(dateAddedUtc)),
+                    mode === 'preview' ? renderMeta('Last played', formatDate(lastPlayedDateUtc)) : '',
+                    renderMeta('Delete after', deadline),
+                    renderMeta('Pending since', formatDate(pendingSinceUtc)),
+                    renderMeta('Rule', appliedRuleName)
+                ].filter(Boolean).join('');
+
+                return [
+                    '<div class="janitorfin-result-row" style="padding: 0.75rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.02);">',
+                    '<div class="janitorfin-result-title" style="font-weight: 600; margin-bottom: 0.35rem;">',
+                    escapeHtml(title),
+                    status ? ' <span class="janitorfin-chip" style="display: inline-block; padding: 0.12rem 0.45rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); font-size: 0.9em;">' + escapeHtml(status) + '</span>' : '',
+                    '</div>',
+                    '<div class="janitorfin-result-meta fieldDescription" style="line-height: 1.45;">' + meta + '</div>',
+                    reason ? '<div class="fieldDescription" style="margin-top: 0.35rem;">' + escapeHtml(reason) + '</div>' : '',
+                    '</div>'
+                ].join('');
+            }
+
+            function renderMediaList(items, mode) {
+                if (!items || !items.length) {
+                    return '<div class="fieldDescription">No media to show.</div>';
+                }
+
+                var movies = items
+                    .filter(function (item) { return getValue(item, 'itemType', 'ItemType') !== 'Episode'; })
+                    .sort(sortMediaRows);
+                var episodes = items
+                    .filter(function (item) { return getValue(item, 'itemType', 'ItemType') === 'Episode'; })
+                    .sort(sortMediaRows);
+                var html = [];
+
+                if (movies.length) {
+                    html.push('<div class="janitorfin-result-section" style="margin-top: 1rem;"><div class="janitorfin-result-heading" style="font-weight: 600; margin: 1rem 0 0.5rem;">Movies (' + movies.length + ')</div>');
+                    html.push(movies.map(function (item) { return renderMediaRow(item, mode); }).join(''));
+                    html.push('</div>');
+                }
+
+                if (episodes.length) {
+                    var tvGroups = groupEpisodesByCleanupScope(episodes);
+                    html.push('<div class="janitorfin-result-section" style="margin-top: 1rem;"><div class="janitorfin-result-heading" style="font-weight: 600; margin: 1rem 0 0.5rem;">TV (' + tvGroups.length + ' ' + (String(document.querySelector('#TvCleanupScope').value || '0') === '1' ? 'series' : 'seasons') + ', ' + episodes.length + ' episodes)</div>');
+                    html.push(tvGroups.map(function (group) { return renderTvGroup(group, mode); }).join(''));
+                    html.push('</div>');
+                }
+
+                return html.join('');
             }
 
             function renderBucketSection(title, buckets) {
@@ -632,9 +1098,7 @@
                 var detailLimit = getValue(result, 'candidateDetailLimit', 'CandidateDetailLimit');
                 var isTruncated = getValue(result, 'isCandidateListTruncated', 'IsCandidateListTruncated');
                 var candidates = getValue(result, 'candidates', 'Candidates') || [];
-                var libraryBuckets = getValue(result, 'candidatesByLibrary', 'CandidatesByLibrary') || [];
                 var itemTypeBuckets = getValue(result, 'candidatesByItemType', 'CandidatesByItemType') || [];
-                var reasonBuckets = getValue(result, 'candidatesByReason', 'CandidatesByReason') || [];
 
                 setInlineDebugDump('Preview payload', result);
 
@@ -676,71 +1140,10 @@
                     return;
                 }
 
-                var cardsHtml = candidates.map(function (candidate) {
-                    var labels = [];
-                    var libraryName = getValue(candidate, 'libraryName', 'LibraryName');
-                    var seriesName = getValue(candidate, 'seriesName', 'SeriesName');
-                    var seasonName = getValue(candidate, 'seasonName', 'SeasonName');
-                    var appliedRuleName = getValue(candidate, 'appliedRuleName', 'AppliedRuleName');
-                    var playedByUsers = getValue(candidate, 'playedByUsers', 'PlayedByUsers') || [];
-                    var itemName = getValue(candidate, 'itemName', 'ItemName') || '';
-                    var itemType = getValue(candidate, 'itemType', 'ItemType') || '';
-                    var reason = getValue(candidate, 'reason', 'Reason') || '';
-                    var dateAddedUtc = getValue(candidate, 'dateAddedUtc', 'DateAddedUtc');
-                    var lastPlayedDateUtc = getValue(candidate, 'lastPlayedDateUtc', 'LastPlayedDateUtc');
-                    var isPendingDeletion = getValue(candidate, 'isPendingDeletion', 'IsPendingDeletion');
-                    var pendingSinceUtc = getValue(candidate, 'pendingSinceUtc', 'PendingSinceUtc');
-                    var pendingDeleteAfterUtc = getValue(candidate, 'pendingDeleteAfterUtc', 'PendingDeleteAfterUtc');
-                    var path = getValue(candidate, 'path', 'Path');
-
-                    if (libraryName) {
-                        labels.push('Library: ' + escapeHtml(libraryName));
-                    }
-                    if (seriesName) {
-                        labels.push('Series: ' + escapeHtml(seriesName));
-                    }
-                    if (seasonName) {
-                        labels.push('Season: ' + escapeHtml(seasonName));
-                    }
-                    if (itemType === 'Episode') {
-                        labels.push('TV scope: ' + escapeHtml(getTvCleanupScopeLabel(document.querySelector('#TvCleanupScope').value || '0')));
-                    }
-                    if (formatEpisodeCode(candidate)) {
-                        labels.push('Episode: ' + escapeHtml(formatEpisodeCode(candidate)));
-                    }
-                    if (appliedRuleName) {
-                        labels.push('Rule: ' + escapeHtml(appliedRuleName));
-                    }
-                    if (playedByUsers.length) {
-                        labels.push('Played by: ' + escapeHtml(playedByUsers.join(', ')));
-                    }
-                    if (isPendingDeletion) {
-                        labels.push('Pending since: ' + escapeHtml(formatDate(pendingSinceUtc)));
-                    }
-
-                    return [
-                        '<div class="listItem" style="padding: 1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem; margin-bottom: 0.75rem;">',
-                        '<div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">',
-                        '<div>',
-                        '<div style="font-weight: 600;">' + escapeHtml(itemName) + '</div>',
-                        '<div class="fieldDescription">' + escapeHtml(itemType) + '</div>',
-                        '</div>',
-                        '<div class="fieldDescription">' + escapeHtml(reason) + (isPendingDeletion ? ' | Pending deletion' : '') + '</div>',
-                        '</div>',
-                        labels.length ? '<div class="fieldDescription" style="margin-top: 0.5rem;">' + labels.join(' | ') + '</div>' : '',
-                        '<div class="fieldDescription" style="margin-top: 0.5rem;">Added: ' + escapeHtml(formatDate(dateAddedUtc)) + ' | Last played: ' + escapeHtml(formatDate(lastPlayedDateUtc)) + '</div>',
-                        isPendingDeletion ? '<div class="fieldDescription" style="margin-top: 0.5rem;">Delete after: ' + escapeHtml(formatDate(pendingDeleteAfterUtc)) + ' (' + escapeHtml(formatRelativeDeadline(pendingDeleteAfterUtc)) + ')</div>' : '',
-                        path ? '<div class="fieldDescription" style="margin-top: 0.5rem; word-break: break-all;">' + escapeHtml(path) + '</div>' : '',
-                        '</div>'
-                    ].join('');
-                }).join('');
-
                 var resultsHtml = [
                     renderBucketSection('By Type', itemTypeBuckets),
-                    renderBucketSection('By Reason', reasonBuckets),
-                    renderBucketSection('Top Libraries', libraryBuckets),
                     isTruncated ? '<div class="fieldDescription" style="margin-bottom: 1rem;">Detailed rows are capped to keep the page responsive. Use the debug payload below only when you need raw response inspection.</div>' : '',
-                    cardsHtml
+                    renderMediaList(candidates, 'preview')
                 ].join('');
 
                 renderInfoMessage(summaryParts.join(' '), resultsHtml);
@@ -775,7 +1178,7 @@
 
             function setPendingIdleState() {
                 document.querySelector('#PendingDeletionSummary').textContent = 'Pending list not loaded yet.';
-                document.querySelector('#PendingDeletionResults').innerHTML = '<div class="fieldDescription">Use Refresh Pending List to inspect currently staged items.</div>';
+                document.querySelector('#PendingDeletionResults').innerHTML = '<div class="fieldDescription">Open Pending List or use Refresh to inspect currently staged items.</div>';
             }
 
             function renderPendingDeletionSummary(result) {
@@ -810,49 +1213,7 @@
                     return;
                 }
 
-                resultsElement.innerHTML = entries.map(function (entry) {
-                    var itemName = getValue(entry, 'itemName', 'ItemName') || '';
-                    var itemType = getValue(entry, 'itemType', 'ItemType') || '';
-                    var libraryName = getValue(entry, 'libraryName', 'LibraryName');
-                    var seriesName = getValue(entry, 'seriesName', 'SeriesName');
-                    var seasonName = getValue(entry, 'seasonName', 'SeasonName');
-                    var reason = getValue(entry, 'reason', 'Reason') || '';
-                    var appliedRuleName = getValue(entry, 'appliedRuleName', 'AppliedRuleName');
-                    var firstQualifiedUtc = getValue(entry, 'firstQualifiedUtc', 'FirstQualifiedUtc');
-                    var lastMatchedUtc = getValue(entry, 'lastMatchedUtc', 'LastMatchedUtc');
-                    var deleteAfterUtc = getValue(entry, 'deleteAfterUtc', 'DeleteAfterUtc');
-                    var path = getValue(entry, 'path', 'Path');
-                    var labels = [];
-
-                    if (libraryName) {
-                        labels.push('Library: ' + escapeHtml(libraryName));
-                    }
-                    if (seriesName) {
-                        labels.push('Series: ' + escapeHtml(seriesName));
-                    }
-                    if (seasonName) {
-                        labels.push('Season: ' + escapeHtml(seasonName));
-                    }
-                    if (appliedRuleName) {
-                        labels.push('Rule: ' + escapeHtml(appliedRuleName));
-                    }
-
-                    return [
-                        '<div class="listItem" style="padding: 1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem; margin-bottom: 0.75rem;">',
-                        '<div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">',
-                        '<div>',
-                        '<div style="font-weight: 600;">' + escapeHtml(itemName) + '</div>',
-                        '<div class="fieldDescription">' + escapeHtml(itemType) + '</div>',
-                        '</div>',
-                        '<div class="fieldDescription">' + escapeHtml(reason) + '</div>',
-                        '</div>',
-                        labels.length ? '<div class="fieldDescription" style="margin-top: 0.5rem;">' + labels.join(' | ') + '</div>' : '',
-                        '<div class="fieldDescription" style="margin-top: 0.5rem;">First qualified: ' + escapeHtml(formatDate(firstQualifiedUtc)) + ' | Last matched: ' + escapeHtml(formatDate(lastMatchedUtc)) + '</div>',
-                        '<div class="fieldDescription" style="margin-top: 0.5rem;">Delete after: ' + escapeHtml(formatDate(deleteAfterUtc)) + ' (' + escapeHtml(formatRelativeDeadline(deleteAfterUtc)) + ')</div>',
-                        path ? '<div class="fieldDescription" style="margin-top: 0.5rem; word-break: break-all;">' + escapeHtml(path) + '</div>' : '',
-                        '</div>'
-                    ].join('');
-                }).join('');
+                resultsElement.innerHTML = renderMediaList(entries, 'pending');
             }
 
             function loadPendingDeletionSummary() {
@@ -871,7 +1232,7 @@
             }
 
             function setPreviewIdleState() {
-                renderInfoMessage('Preview not loaded yet.', '<div class="fieldDescription">Use Refresh Preview to load a summary and a capped sample of matching items.</div>');
+                renderInfoMessage('Preview not loaded yet.', '<div class="fieldDescription">Use Preview to load a summary and a capped sample of matching items.</div>');
             }
 
             function loadInlinePreview(useFormValues) {
@@ -904,30 +1265,6 @@
                 });
             }
 
-            function runInlineDryRun() {
-                var config;
-
-                try {
-                    config = collectConfigFromForm();
-                } catch (error) {
-                    setInlineDebugDump('Dry run error', formatError(error, 'Dry run execution failed.'));
-                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Dry run execution failed.');
-                    return;
-                }
-
-                document.querySelector('#InlineExecutionSummary').textContent = 'Running dry run...';
-                Dashboard.showLoadingMsg();
-                fetchJson('Janitorfin/Execute/WithConfiguration?dryRun=true', 'POST', config).then(function (result) {
-                    renderInlineExecutionSummary(result);
-                    loadPendingDeletionSummary();
-                    Dashboard.hideLoadingMsg();
-                }).catch(function (error) {
-                    setInlineDebugDump('Dry run error', error);
-                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Dry run execution failed.');
-                    Dashboard.hideLoadingMsg();
-                });
-            }
-
             function saveCurrentConfiguration(config, skipPendingRefresh) {
                 return ApiClient.updatePluginConfiguration(JanitorfinConfig.pluginUniqueId, config).then(function (result) {
                     currentPluginConfig = normalizeConfig(config);
@@ -943,8 +1280,8 @@
 
             function renderCleanupTaskStart(result) {
                 var summary = document.querySelector('#InlineExecutionSummary');
-                var message = getValue(result, 'message', 'Message') || 'Cleanup task request completed.';
-                var taskName = getValue(result, 'taskName', 'TaskName') || 'Janitorfin Cleanup';
+                var message = getValue(result, 'message', 'Message') || 'Janitorfin task request completed.';
+                var taskName = getValue(result, 'taskName', 'TaskName') || 'Janitorfin task';
                 var taskState = getValue(result, 'taskState', 'TaskState') || 'Unknown';
                 var taskId = getValue(result, 'taskId', 'TaskId') || '';
                 var currentProgress = getValue(result, 'currentProgress', 'CurrentProgress');
@@ -961,49 +1298,66 @@
                     currentProgress === null || typeof currentProgress === 'undefined' ? '' : 'Progress: ' + Math.round(currentProgress) + '%.',
                     taskId ? 'Task ID: ' + taskId + '.' : ''
                 ].join(' ').trim();
-
-                renderInfoMessage(
-                    alreadyRunning
-                        ? (dryRun ? 'Janitorfin dry run is already active.' : 'Janitorfin cleanup is already active.')
-                        : (dryRun ? 'Janitorfin is running as a scheduled dry run.' : 'Janitorfin cleanup is running as a scheduled task.'),
-                    '<div class="fieldDescription">Open Dashboard &gt; Scheduled Tasks to watch progress. The Run Cleanup Now button respects the saved Dry run setting.</div>');
             }
 
-            function runInlineLiveCleanup() {
+            function runJanitorfinTask(options) {
                 var config;
 
                 try {
                     config = collectConfigFromForm();
                 } catch (error) {
-                    setInlineDebugDump('Cleanup error', formatError(error, 'Cleanup execution failed.'));
-                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Cleanup execution failed.');
+                    setInlineDebugDump('Cleanup error', formatError(error, options.errorMessage));
+                    document.querySelector('#InlineExecutionSummary').textContent = formatError(error, options.errorMessage);
                     return;
                 }
 
                 Dashboard.confirm({
-                    title: 'Run Janitorfin Cleanup',
+                    title: options.confirmTitle,
                     message: config.DryRun
-                        ? 'Dry run is enabled. This will save the current form values and start the scheduled task in dry-run mode, so nothing will be deleted.'
-                        : config.EnablePendingDeletion
-                            ? 'This will apply the current form values. Newly matching items will be queued, and any expired pending items will be deleted.'
-                            : 'This will delete matching media immediately using the current form values.'
+                        ? options.dryRunMessage
+                        : options.liveMessage
                 }).then(function () {
-                    document.querySelector('#InlineExecutionSummary').textContent = 'Saving configuration and starting cleanup...';
+                    document.querySelector('#InlineExecutionSummary').textContent = options.startingMessage;
                     Dashboard.showLoadingMsg();
                     saveCurrentConfiguration(config, true).then(function () {
-                        return fetchJson('Janitorfin/Tasks/Cleanup/Run', 'POST');
+                        return fetchJson(options.url, 'POST');
                     }).then(function (result) {
                         renderCleanupTaskStart(result);
+                        setTimeout(loadPendingDeletionSummary, 10000);
                         Dashboard.hideLoadingMsg();
                     }).catch(function (error) {
                         setInlineDebugDump('Cleanup error', error);
-                        document.querySelector('#InlineExecutionSummary').textContent = formatError(error, 'Cleanup task failed to start.');
+                        document.querySelector('#InlineExecutionSummary').textContent = formatError(error, options.errorMessage);
                         Dashboard.hideLoadingMsg();
                     });
                 });
             }
 
+            function runScanPending() {
+                runJanitorfinTask({
+                    confirmTitle: 'Scan Pending Deletions',
+                    dryRunMessage: 'Dry run is enabled. This will save the current form values and start the scan task in dry-run mode, so the pending list will not be changed.',
+                    liveMessage: 'This will scan media using the current form values, add newly qualified media to the pending list, and remove entries that no longer qualify.',
+                    startingMessage: 'Saving configuration and starting pending scan...',
+                    errorMessage: 'Scan pending task failed to start.',
+                    url: 'Janitorfin/Tasks/ScanPending/Run'
+                });
+            }
+
+            function runDeleteDuePending() {
+                runJanitorfinTask({
+                    confirmTitle: 'Delete Due Pending Items',
+                    dryRunMessage: 'Dry run is enabled. This will save the current form values and start the delete-due task in dry-run mode, so nothing will be deleted.',
+                    liveMessage: 'This will delete only pending-list items whose saved grace deadline has elapsed. It will not run a full eligibility scan.',
+                    startingMessage: 'Saving configuration and starting delete-due task...',
+                    errorMessage: 'Delete due pending task failed to start.',
+                    url: 'Janitorfin/Tasks/DeleteDuePending/Run'
+                });
+            }
+
             document.querySelector('#JanitorfinConfigPage').addEventListener('pageshow', function () {
+                applyResponsiveLayout();
+                switchOperationsTab('PreviewPanel');
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(JanitorfinConfig.pluginUniqueId).then(function (config) {
                     config = normalizeConfig(config);
@@ -1029,10 +1383,17 @@
                     document.querySelector('#EnablePendingDeletion').checked = config.EnablePendingDeletion !== false;
                     document.querySelector('#PendingDeletionGraceDays').value = config.PendingDeletionGraceDays;
                     document.querySelector('#EnableHomeScreenSectionsIntegration').checked = config.EnableHomeScreenSectionsIntegration !== false;
+                    document.querySelector('#EnableDiscordGracePeriodNotifications').checked = config.EnableDiscordGracePeriodNotifications === true;
+                    document.querySelector('#DiscordWebhookUrl').value = config.DiscordWebhookUrl || '';
                     document.querySelector('#EnableRadarrIntegration').checked = config.EnableRadarrIntegration;
                     document.querySelector('#RadarrServerUrl').value = config.RadarrServerUrl || '';
                     document.querySelector('#RadarrApiKey').value = config.RadarrApiKey || '';
                     document.querySelector('#UnmonitorRadarrOnDelete').checked = config.UnmonitorRadarrOnDelete;
+                    document.querySelector('#EnableJellystatIntegration').checked = config.EnableJellystatIntegration;
+                    document.querySelector('#JellystatServerUrl').value = config.JellystatServerUrl || '';
+                    document.querySelector('#JellystatApiKey').value = config.JellystatApiKey || '';
+                    document.querySelector('#JellystatWatchedThresholdPercent').value = config.JellystatWatchedThresholdPercent;
+                    document.querySelector('#JellystatMaxHistoryPages').value = config.JellystatMaxHistoryPages;
                     document.querySelector('#EnableSonarrIntegration').checked = config.EnableSonarrIntegration;
                     document.querySelector('#SonarrServerUrl').value = config.SonarrServerUrl || '';
                     document.querySelector('#SonarrApiKey').value = config.SonarrApiKey || '';
@@ -1046,20 +1407,32 @@
                 });
             });
 
+            window.addEventListener('resize', applyResponsiveLayout);
+
             document.querySelector('#RefreshInlinePreviewButton').addEventListener('click', function () {
+                switchOperationsTab('PreviewPanel');
                 loadInlinePreview(true);
             });
 
-            document.querySelector('#RunInlineDryRunButton').addEventListener('click', function () {
-                runInlineDryRun();
+            document.querySelector('#RunScanPendingButton').addEventListener('click', function () {
+                switchOperationsTab('CleanupPanel');
+                runScanPending();
             });
 
-            document.querySelector('#RunInlineLiveCleanupButton').addEventListener('click', function () {
-                runInlineLiveCleanup();
+            document.querySelector('#RunDeleteDuePendingButton').addEventListener('click', function () {
+                switchOperationsTab('CleanupPanel');
+                runDeleteDuePending();
             });
 
             document.querySelector('#RefreshPendingDeletionButton').addEventListener('click', function () {
+                switchOperationsTab('PendingPanel');
                 loadPendingDeletionSummary();
+            });
+
+            document.querySelectorAll('#JanitorfinConfigPage .janitorfin-tab-button').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    switchOperationsTab(button.getAttribute('data-janitorfin-tab'));
+                });
             });
 
             document.querySelector('#TestRadarrConnection').addEventListener('click', function () {
@@ -1082,6 +1455,18 @@
                     Dashboard.hideLoadingMsg();
                 }).catch(function (error) {
                     resultElement.textContent = formatError(error, 'Sonarr connection test failed.');
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#TestJellystatConnection').addEventListener('click', function () {
+                var resultElement = document.querySelector('#JellystatTestResult');
+                Dashboard.showLoadingMsg();
+                postJson('Janitorfin/Test/Jellystat').then(function (result) {
+                    resultElement.textContent = result.message || result.Message || 'Jellystat connection test completed.';
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    resultElement.textContent = formatError(error, 'Jellystat connection test failed.');
                     Dashboard.hideLoadingMsg();
                 });
             });

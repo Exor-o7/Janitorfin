@@ -46,8 +46,11 @@ The plugin is intentionally closer to a Jellyfin-first equivalent of the cleanup
 - Pending deletion queue with configurable grace period
 - Review surface via the Jellyfin collection `Removing Soon`
 - Optional integration with Home Screen Sections for a `Removing Soon` row
+- Optional Discord notifications for items currently in the grace period
+- Optional Jellystat integration for more complete watch-history detection
+- Separate scheduled tasks for scanning media and deleting overdue pending items
 - Radarr unmonitor support for movies deleted by Janitorfin
-- Sonarr unmonitor support for TV deletions with selectable episode, season, or series scope
+- Sonarr unmonitor support for TV deletions with season or series scope
 - Separate movie and TV cleanup rules
 - TV cleanup scope that can match by season or entire series
 - Favorite protection and protected-tag exclusion support
@@ -55,14 +58,51 @@ The plugin is intentionally closer to a Jellyfin-first equivalent of the cleanup
 
 ## How It Works
 
-### Cleanup Flow
+### Basic Workflow
 
-1. Janitorfin scans movies, TV episodes, and videos in Jellyfin.
-2. It evaluates each item against your configured watched and never-watched retention rules.
-3. Matching items are either:
-   - queued for staged deletion, or
-   - deleted immediately if pending deletion is disabled.
-4. If Radarr or Sonarr integration is enabled, Janitorfin updates monitoring before deletion so content is not immediately reacquired.
+Janitorfin is designed around a review-first cleanup process:
+
+1. Adjust your cleanup settings.
+2. Use `Refresh Preview` to see what currently qualifies.
+3. Run `Scan Pending Now` to add qualifying media to the pending deletion list.
+4. Review the pending list in Janitorfin or in the Jellyfin collection called `Removing Soon`.
+5. After the grace period has passed, run `Delete Due Pending Now` to delete only overdue pending items.
+
+This keeps the expensive scan separate from the actual delete step. It also makes it easier to schedule scanning and deletion at different times.
+
+### Preview
+
+Preview shows what would qualify using the settings currently shown on the page.
+
+Preview does not change the pending list, delete media, or update Radarr or Sonarr. It is safe to use while tuning rules.
+
+### Scan Pending Deletions
+
+`Scan Pending Now` runs the scheduled task `Janitorfin Scan Pending Deletions`.
+
+This task scans movies, TV episodes, and videos in Jellyfin. It evaluates them against your rules and updates the pending deletion list.
+
+- Newly qualified media is added to the pending list.
+- Media that no longer qualifies is removed from the pending list.
+- The `Removing Soon` collection is updated.
+- Discord grace-period notifications can be sent if enabled.
+
+If `Dry run` is enabled, the task reports what would happen but does not change the pending list.
+
+### Delete Due Pending Items
+
+`Delete Due Pending Now` runs the scheduled task `Janitorfin Delete Due Pending Items`.
+
+This task does not run a full media scan. It reads the saved pending deletion list and deletes only entries whose saved grace deadline has passed.
+
+Before deleting, Janitorfin still performs lightweight safety checks:
+
+- If the item no longer exists, it is removed from the pending list.
+- If the item now has the protected tag, it is removed from the pending list instead of deleted.
+- If `Keep favorites` is enabled and any Jellyfin user has favorited the item, it is removed from the pending list instead of deleted.
+- If Radarr or Sonarr integration is enabled, Janitorfin updates monitoring before deletion.
+
+If `Dry run` is enabled, the task reports which pending items are due but does not delete anything.
 
 ### TV Matching
 
@@ -81,8 +121,10 @@ When pending deletion is enabled, Janitorfin does not delete matching items imme
 
 - Matching items are added to the pending queue.
 - They remain reviewable for the configured grace period.
-- If they are watched or favorited during that window and no longer match the rules, they are spared.
-- If they still match after the grace period, the next live cleanup run deletes them.
+- A later `Scan Pending Deletions` task can remove items from the queue if they no longer match the rules.
+- A later `Delete Due Pending Items` task deletes only items whose saved grace deadline has passed.
+
+The grace deadline is saved when an item is first added to the pending list. Changing the grace-days setting affects newly queued items, but it does not automatically rewrite deadlines for items already pending.
 
 ## Installation
 
@@ -127,6 +169,22 @@ The release workflow keeps this manifest updated automatically for future tagged
 
 ## Configuration
 
+### Admin Page Layout
+
+The Janitorfin settings page is split into two main areas:
+
+- The left side contains cleanup rules and integration settings.
+- The right side contains `Preview`, `Cleanup`, and `Pending List` tabs.
+
+Use the tabs like this:
+
+- `Preview`
+  - Shows media that currently qualifies under the settings on the page.
+- `Cleanup`
+  - Starts the scan or delete scheduled tasks.
+- `Pending List`
+  - Shows media already staged for deletion and its grace-period status.
+
 ### Cleanup Options
 
 - `Protected tag`
@@ -134,9 +192,13 @@ The release workflow keeps this manifest updated automatically for future tagged
 - `Keep favorites`
   - Any item favorited by any Jellyfin user is skipped.
 - `Dry run`
-  - Logs and previews actions without deleting media or touching monitoring in Radarr or Sonarr.
+  - Reports what Janitorfin would do without changing the pending list, deleting media, or touching monitoring in Radarr or Sonarr.
 - `Pending deletion grace days`
-  - Controls how long items remain staged before a later live run deletes them.
+  - Controls how long newly queued items remain staged before they become eligible for the delete-due task.
+- `Discord grace-period notifications`
+  - Sends a Discord webhook message with media currently waiting in the grace period when the scan task runs.
+- `Home Screen Sections integration`
+  - Adds a `Removing Soon` row to the Jellyfin home screen if the Home Screen Sections plugin is installed.
 
 ### Movie Rules
 
@@ -162,7 +224,19 @@ The release workflow keeps this manifest updated automatically for future tagged
 
 - Optionally unmonitor deleted TV content in Sonarr.
 - `Sonarr unmonitor scope` is separate from TV cleanup match scope.
+- Available scopes are `Season` and `Series`.
 - Recommended default is `Season` for most TV libraries.
+- `Season` scope unmonitors the deleted season and the parent series to prevent future grabs.
+- `Series` scope unmonitors the entire show.
+
+### Jellystat
+
+Jellystat integration is optional. When enabled, Janitorfin can use Jellystat playback history in addition to Jellyfin user data when deciding if media has been watched.
+
+- `Jellystat watched threshold percent`
+  - Controls how much playback counts as watched.
+- `Jellystat max history pages`
+  - Limits how much Jellystat history Janitorfin reads during a scan.
 
 ## Review Surfaces
 
@@ -177,6 +251,10 @@ This gives users a normal Jellyfin-native place to browse items at risk, watch t
 If the Home Screen Sections plugin is installed, Janitorfin can optionally register a `Removing Soon` row using reflection-based integration.
 
 If Home Screen Sections is not installed, Janitorfin still works normally and continues to use the `Removing Soon` collection as the fallback review experience.
+
+### Jellyfin Activity Log
+
+Janitorfin adds grouped activity log entries when media is queued for pending deletion and when media is deleted. TV entries are grouped by the selected TV cleanup scope so the dashboard stays readable.
 
 ## Development
 
@@ -210,7 +288,8 @@ dotnet publish .\Janitorfin.Plugin\Janitorfin.Plugin.csproj -c Release -o .\arti
 
 - TV cleanup matching only produces candidates when every episode in the chosen season or series scope is eligible.
 - Pending deletion is the safest operating mode and is enabled by default.
-- Sonarr and Radarr updates only run during live cleanup, not dry-run preview.
+- Sonarr and Radarr updates only run during live delete tasks, not preview or dry run.
+- Janitorfin waits for Jellyfin library scan, refresh, and metadata tasks to finish before running its own scan or delete task.
 - Home Screen Sections integration is optional and non-fatal if the plugin is absent.
 
 ## Contribution

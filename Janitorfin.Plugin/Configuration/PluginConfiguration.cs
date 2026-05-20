@@ -57,9 +57,12 @@ public class PluginConfiguration : BasePluginConfiguration
         EnablePendingDeletion = true;
         PendingDeletionGraceDays = 30;
         EnableHomeScreenSectionsIntegration = true;
+        EnableDiscordGracePeriodNotifications = false;
         DryRun = true;
         UnmonitorRadarrOnDelete = true;
         UnmonitorSonarrOnDelete = true;
+        JellystatWatchedThresholdPercent = 90;
+        JellystatMaxHistoryPages = 100;
         MovieRules = new CleanupRuleConfiguration();
         EpisodeRules = new CleanupRuleConfiguration();
         VideoRules = new CleanupRuleConfiguration();
@@ -92,6 +95,10 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public bool EnableHomeScreenSectionsIntegration { get; set; }
 
+    public bool EnableDiscordGracePeriodNotifications { get; set; }
+
+    public string DiscordWebhookUrl { get; set; } = string.Empty;
+
     public bool DryRun { get; set; }
 
     public bool EnableRadarrIntegration { get; set; }
@@ -111,4 +118,14 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool UnmonitorSonarrOnDelete { get; set; }
 
     public SonarrUnmonitorScope SonarrUnmonitorScope { get; set; }
+
+    public bool EnableJellystatIntegration { get; set; }
+
+    public string JellystatServerUrl { get; set; } = string.Empty;
+
+    public string JellystatApiKey { get; set; } = string.Empty;
+
+    public int JellystatWatchedThresholdPercent { get; set; }
+
+    public int JellystatMaxHistoryPages { get; set; }
 }

@@ -8,27 +8,27 @@ using Microsoft.Extensions.Logging;
 
 namespace Janitorfin.Plugin.Tasks;
 
-public class LibraryMaintenanceTask : IScheduledTask
+public class ScanPendingDeletionTask : IScheduledTask
 {
     private readonly ILogger _logger;
     private readonly ILocalizationManager _localizationManager;
     private readonly CleanupExecutionService _cleanupExecutionService;
 
-    public LibraryMaintenanceTask(
+    public ScanPendingDeletionTask(
         ILoggerFactory loggerFactory,
         ILocalizationManager localizationManager,
         CleanupExecutionService cleanupExecutionService)
     {
-        _logger = loggerFactory.CreateLogger<LibraryMaintenanceTask>();
+        _logger = loggerFactory.CreateLogger<ScanPendingDeletionTask>();
         _localizationManager = localizationManager;
         _cleanupExecutionService = cleanupExecutionService;
     }
 
-    public string Name => "Janitorfin Cleanup";
+    public string Name => "Janitorfin Scan Pending Deletions";
 
-    public string Description => "Evaluates stale Jellyfin media and prepares cleanup actions for Radarr and Sonarr integrations.";
+    public string Description => "Scans Jellyfin media and updates Janitorfin's pending deletion list.";
 
-    public string Key => "JanitorfinCleanup";
+    public string Key => "JanitorfinScanPending";
 
     public string Category => _localizationManager.GetLocalizedString("TasksMaintenanceCategory");
 
@@ -52,10 +52,68 @@ public class LibraryMaintenanceTask : IScheduledTask
             return;
         }
 
-        var summary = await _cleanupExecutionService.ExecuteAsync(configuration, null, cancellationToken).ConfigureAwait(false);
+        var summary = await _cleanupExecutionService.ScanAndQueuePendingAsync(configuration, null, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Janitorfin cleanup finished. DryRun={DryRun}, Scanned={Scanned}, Candidates={Candidates}, Deleted={Deleted}, Failed={Failed}, RadarrUpdated={RadarrUpdated}, SonarrUpdated={SonarrUpdated}",
+            "Janitorfin pending scan finished. DryRun={DryRun}, Scanned={Scanned}, Candidates={Candidates}, Queued={Queued}, Pending={Pending}",
+            summary.DryRun,
+            summary.ScannedItemCount,
+            summary.CandidateCount,
+            summary.QueuedCount,
+            summary.PendingCount);
+
+        progress.Report(100);
+    }
+}
+
+public class DeleteDuePendingTask : IScheduledTask
+{
+    private readonly ILogger _logger;
+    private readonly ILocalizationManager _localizationManager;
+    private readonly CleanupExecutionService _cleanupExecutionService;
+
+    public DeleteDuePendingTask(
+        ILoggerFactory loggerFactory,
+        ILocalizationManager localizationManager,
+        CleanupExecutionService cleanupExecutionService)
+    {
+        _logger = loggerFactory.CreateLogger<DeleteDuePendingTask>();
+        _localizationManager = localizationManager;
+        _cleanupExecutionService = cleanupExecutionService;
+    }
+
+    public string Name => "Janitorfin Delete Due Pending Items";
+
+    public string Description => "Deletes media from Janitorfin's pending deletion list after its grace period has elapsed.";
+
+    public string Key => "JanitorfinDeleteDuePending";
+
+    public string Category => _localizationManager.GetLocalizedString("TasksMaintenanceCategory");
+
+    public IEnumerable<TaskTriggerInfo> GetDefaultTriggers() =>
+    [
+        new TaskTriggerInfo
+        {
+            Type = TaskTriggerInfoType.IntervalTrigger,
+            IntervalTicks = TimeSpan.FromDays(1).Ticks,
+        },
+    ];
+
+    public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
+    {
+        var configuration = Plugin.Instance?.Configuration;
+
+        if (configuration is null)
+        {
+            _logger.LogWarning("Janitorfin configuration was unavailable. Delete due pending task did not run.");
+            progress.Report(100);
+            return;
+        }
+
+        var summary = await _cleanupExecutionService.DeleteDuePendingAsync(configuration, null, cancellationToken).ConfigureAwait(false);
+
+        _logger.LogInformation(
+            "Janitorfin delete due pending finished. DryRun={DryRun}, PendingChecked={PendingChecked}, Due={Due}, Deleted={Deleted}, Failed={Failed}, RadarrUpdated={RadarrUpdated}, SonarrUpdated={SonarrUpdated}",
             summary.DryRun,
             summary.ScannedItemCount,
             summary.CandidateCount,
