@@ -24,7 +24,7 @@ public class ScanPendingDeletionTask : IScheduledTask
         _cleanupExecutionService = cleanupExecutionService;
     }
 
-    public string Name => "Janitorfin Scan Pending Deletions";
+    public string Name => "Janitorfin Update Pending Media";
 
     public string Description => "Scans Jellyfin media and updates Janitorfin's pending deletion list.";
 
@@ -55,7 +55,7 @@ public class ScanPendingDeletionTask : IScheduledTask
         var summary = await _cleanupExecutionService.ScanAndQueuePendingAsync(configuration, null, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Janitorfin pending scan finished. DryRun={DryRun}, Scanned={Scanned}, Candidates={Candidates}, Queued={Queued}, Pending={Pending}",
+            "Janitorfin pending deletion list update finished. DryRun={DryRun}, Scanned={Scanned}, Candidates={Candidates}, Queued={Queued}, Pending={Pending}",
             summary.DryRun,
             summary.ScannedItemCount,
             summary.CandidateCount,
@@ -82,9 +82,9 @@ public class DeleteDuePendingTask : IScheduledTask
         _cleanupExecutionService = cleanupExecutionService;
     }
 
-    public string Name => "Janitorfin Delete Due Pending Items";
+    public string Name => "Janitorfin Delete Overdue Media";
 
-    public string Description => "Deletes media from Janitorfin's pending deletion list after its grace period has elapsed.";
+    public string Description => "Deletes overdue media from Janitorfin's pending deletion list after its grace period has elapsed.";
 
     public string Key => "JanitorfinDeleteDuePending";
 
@@ -113,7 +113,7 @@ public class DeleteDuePendingTask : IScheduledTask
         var summary = await _cleanupExecutionService.DeleteDuePendingAsync(configuration, null, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Janitorfin delete due pending finished. DryRun={DryRun}, PendingChecked={PendingChecked}, Due={Due}, Deleted={Deleted}, Failed={Failed}, RadarrUpdated={RadarrUpdated}, SonarrUpdated={SonarrUpdated}",
+            "Janitorfin delete overdue pending media finished. DryRun={DryRun}, PendingChecked={PendingChecked}, Due={Due}, Deleted={Deleted}, Failed={Failed}, RadarrUpdated={RadarrUpdated}, SonarrUpdated={SonarrUpdated}",
             summary.DryRun,
             summary.ScannedItemCount,
             summary.CandidateCount,

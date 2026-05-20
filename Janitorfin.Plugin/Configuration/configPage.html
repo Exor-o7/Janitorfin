@@ -153,9 +153,9 @@
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
                                 <input id="EnableDiscordGracePeriodNotifications" name="EnableDiscordGracePeriodNotifications" type="checkbox" is="emby-checkbox" />
-                                <span>Notify Discord after each scan</span>
+                                <span>Notify Discord after scans and deletions</span>
                             </label>
-                            <div class="fieldDescription checkboxFieldDescription">When enabled, Janitorfin posts the media currently in the pending deletion grace period after each cleanup scan.</div>
+                            <div class="fieldDescription checkboxFieldDescription">When enabled, Janitorfin posts pending deletion summaries after scans, including added/removed pending items and media within 3 days of deletion. It also posts deleted-media summaries after delete tasks.</div>
                         </div>
 
                         <div class="inputContainer">
@@ -364,13 +364,13 @@
 
                         <div id="CleanupPanel" class="janitorfin-tab-panel" style="display: none;">
                             <div class="fieldDescription" style="margin-bottom: 1em;">
-                                Cleanup saves the current form values, then starts one of Janitorfin's scheduled tasks. Scan Pending updates the pending list; Delete Due Pending removes only items whose saved grace deadline has elapsed.
+                                Cleanup saves the current form values, then starts one of Janitorfin's scheduled tasks. Update Pending Media scans media and updates the pending list; Delete Overdue Media removes only items whose saved grace deadline has elapsed.
                             </div>
                             <button id="RunScanPendingButton" is="emby-button" type="button" class="raised emby-button">
-                                <span>Scan Pending Now</span>
+                                <span>Update Pending Media Now</span>
                             </button>
                             <button id="RunDeleteDuePendingButton" is="emby-button" type="button" class="raised emby-button" style="margin-left: 0.5em;">
-                                <span>Delete Due Pending Now</span>
+                                <span>Delete Overdue Media Now</span>
                             </button>
                             <div id="InlineExecutionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
                         </div>
@@ -382,6 +382,11 @@
                             <button id="RefreshPendingDeletionButton" is="emby-button" type="button" class="raised emby-button">
                                 <span>Refresh</span>
                             </button>
+                            <div class="inputContainer" style="margin-top: 1em;">
+                                <label class="inputLabel inputLabelUnfocused" for="PendingDeletionSearch">Search pending list</label>
+                                <input id="PendingDeletionSearch" name="PendingDeletionSearch" type="text" is="emby-input" placeholder="Search title, series, season, library, rule, overdue..." />
+                                <div class="fieldDescription">Filters the loaded pending list without changing the queue.</div>
+                            </div>
                             <div id="PendingDeletionSummary" class="fieldDescription" style="margin-top: 1em;"></div>
                             <div id="PendingDeletionResults" style="margin-top: 1em;"></div>
                         </div>
@@ -399,6 +404,7 @@
                 pageVersion: '20260326h'
             };
             var currentPluginConfig = null;
+            var currentPendingDeletionResult = null;
 
             function postJson(url) {
                 return ApiClient.fetch({
@@ -1065,6 +1071,45 @@
                 return html.join('');
             }
 
+            function normalizeSearchText(value) {
+                return String(value || '').toLowerCase();
+            }
+
+            function getPendingItemSearchText(item) {
+                var deleteAfterUtc = getDeleteAfter(item, 'pending');
+                var seasonNumber = getValue(item, 'seasonNumber', 'SeasonNumber');
+                var parts = [
+                    getValue(item, 'itemName', 'ItemName'),
+                    getValue(item, 'itemType', 'ItemType'),
+                    getValue(item, 'libraryName', 'LibraryName'),
+                    getValue(item, 'seriesName', 'SeriesName'),
+                    getValue(item, 'seasonName', 'SeasonName'),
+                    seasonNumber ? 'season ' + seasonNumber : '',
+                    getValue(item, 'episodeNumber', 'EpisodeNumber') ? 'episode ' + getValue(item, 'episodeNumber', 'EpisodeNumber') : '',
+                    getValue(item, 'productionYear', 'ProductionYear'),
+                    getValue(item, 'appliedRuleName', 'AppliedRuleName'),
+                    getValue(item, 'reason', 'Reason'),
+                    deleteAfterUtc && new Date(deleteAfterUtc).getTime() <= Date.now() ? 'due overdue ready deletion' : 'grace pending'
+                ];
+
+                return normalizeSearchText(parts.filter(Boolean).join(' '));
+            }
+
+            function filterPendingEntries(entries, query) {
+                var normalizedQuery = normalizeSearchText(query).trim();
+                if (!normalizedQuery) {
+                    return entries;
+                }
+
+                var terms = normalizedQuery.split(/\s+/).filter(Boolean);
+                return entries.filter(function (item) {
+                    var searchText = getPendingItemSearchText(item);
+                    return terms.every(function (term) {
+                        return searchText.indexOf(term) !== -1;
+                    });
+                });
+            }
+
             function renderBucketSection(title, buckets) {
                 if (!buckets || !buckets.length) {
                     return '';
@@ -1177,6 +1222,8 @@
             }
 
             function setPendingIdleState() {
+                currentPendingDeletionResult = null;
+                document.querySelector('#PendingDeletionSearch').value = '';
                 document.querySelector('#PendingDeletionSummary').textContent = 'Pending list not loaded yet.';
                 document.querySelector('#PendingDeletionResults').innerHTML = '<div class="fieldDescription">Open Pending List or use Refresh to inspect currently staged items.</div>';
             }
@@ -1202,9 +1249,13 @@
                     entries = [];
                 }
 
+                var query = document.querySelector('#PendingDeletionSearch').value || '';
+                var filteredEntries = filterPendingEntries(entries, query);
+                var isFiltered = query.trim().length > 0;
                 summaryElement.textContent = [
                     'Grace period: ' + graceDays + ' day' + (graceDays === 1 ? '' : 's') + '.',
                     'Pending items: ' + entryCount + '.',
+                    isFiltered ? 'Showing ' + filteredEntries.length + ' matching item' + (filteredEntries.length === 1 ? '' : 's') + '.' : '',
                     isTruncated ? 'Showing ' + displayedEntryCount + ' of ' + entryCount + ' items with a limit of ' + detailLimit + '.' : ''
                 ].join(' ').trim();
 
@@ -1213,7 +1264,12 @@
                     return;
                 }
 
-                resultsElement.innerHTML = renderMediaList(entries, 'pending');
+                if (!filteredEntries.length) {
+                    resultsElement.innerHTML = '<div class="fieldDescription">No pending items match the current search.</div>';
+                    return;
+                }
+
+                resultsElement.innerHTML = renderMediaList(filteredEntries, 'pending');
             }
 
             function loadPendingDeletionSummary() {
@@ -1221,6 +1277,7 @@
                 document.querySelector('#PendingDeletionResults').innerHTML = '';
                 Dashboard.showLoadingMsg();
                 fetchJson('Janitorfin/Pending', 'GET').then(function (result) {
+                    currentPendingDeletionResult = result;
                     renderPendingDeletionSummary(result);
                     Dashboard.hideLoadingMsg();
                 }).catch(function (error) {
@@ -1335,22 +1392,22 @@
 
             function runScanPending() {
                 runJanitorfinTask({
-                    confirmTitle: 'Scan Pending Deletions',
-                    dryRunMessage: 'Dry run is enabled. This will save the current form values and start the scan task in dry-run mode, so the pending list will not be changed.',
+                    confirmTitle: 'Update Pending Media',
+                    dryRunMessage: 'Dry run is enabled. This will save the current form values and start the update task in dry-run mode, so the pending list will not be changed.',
                     liveMessage: 'This will scan media using the current form values, add newly qualified media to the pending list, and remove entries that no longer qualify.',
-                    startingMessage: 'Saving configuration and starting pending scan...',
-                    errorMessage: 'Scan pending task failed to start.',
+                    startingMessage: 'Saving configuration and starting pending list update...',
+                    errorMessage: 'Update pending media task failed to start.',
                     url: 'Janitorfin/Tasks/ScanPending/Run'
                 });
             }
 
             function runDeleteDuePending() {
                 runJanitorfinTask({
-                    confirmTitle: 'Delete Due Pending Items',
-                    dryRunMessage: 'Dry run is enabled. This will save the current form values and start the delete-due task in dry-run mode, so nothing will be deleted.',
+                    confirmTitle: 'Delete Overdue Media',
+                    dryRunMessage: 'Dry run is enabled. This will save the current form values and start the delete task in dry-run mode, so nothing will be deleted.',
                     liveMessage: 'This will delete only pending-list items whose saved grace deadline has elapsed. It will not run a full eligibility scan.',
-                    startingMessage: 'Saving configuration and starting delete-due task...',
-                    errorMessage: 'Delete due pending task failed to start.',
+                    startingMessage: 'Saving configuration and starting overdue media delete task...',
+                    errorMessage: 'Delete overdue media task failed to start.',
                     url: 'Janitorfin/Tasks/DeleteDuePending/Run'
                 });
             }
@@ -1427,6 +1484,12 @@
             document.querySelector('#RefreshPendingDeletionButton').addEventListener('click', function () {
                 switchOperationsTab('PendingPanel');
                 loadPendingDeletionSummary();
+            });
+
+            document.querySelector('#PendingDeletionSearch').addEventListener('input', function () {
+                if (currentPendingDeletionResult) {
+                    renderPendingDeletionSummary(currentPendingDeletionResult);
+                }
             });
 
             document.querySelectorAll('#JanitorfinConfigPage .janitorfin-tab-button').forEach(function (button) {

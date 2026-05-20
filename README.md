@@ -46,7 +46,7 @@ The plugin is intentionally closer to a Jellyfin-first equivalent of the cleanup
 - Pending deletion queue with configurable grace period
 - Review surface via the Jellyfin collection `Removing Soon`
 - Optional integration with Home Screen Sections for a `Removing Soon` row
-- Optional Discord notifications for items currently in the grace period
+- Optional Discord notifications for pending deletion and deleted-media summaries
 - Optional Jellystat integration for more complete watch-history detection
 - Separate scheduled tasks for scanning media and deleting overdue pending items
 - Radarr unmonitor support for movies deleted by Janitorfin
@@ -64,9 +64,9 @@ Janitorfin is designed around a review-first cleanup process:
 
 1. Adjust your cleanup settings.
 2. Use `Refresh Preview` to see what currently qualifies.
-3. Run `Scan Pending Now` to add qualifying media to the pending deletion list.
+3. Run `Update Pending Media Now` to add qualifying media to the pending deletion list.
 4. Review the pending list in Janitorfin or in the Jellyfin collection called `Removing Soon`.
-5. After the grace period has passed, run `Delete Due Pending Now` to delete only overdue pending items.
+5. After the grace period has passed, run `Delete Overdue Media Now` to delete only overdue pending items.
 
 This keeps the expensive scan separate from the actual delete step. It also makes it easier to schedule scanning and deletion at different times.
 
@@ -76,22 +76,22 @@ Preview shows what would qualify using the settings currently shown on the page.
 
 Preview does not change the pending list, delete media, or update Radarr or Sonarr. It is safe to use while tuning rules.
 
-### Scan Pending Deletions
+### Update Pending Media
 
-`Scan Pending Now` runs the scheduled task `Janitorfin Scan Pending Deletions`.
+`Update Pending Media Now` runs the scheduled task `Janitorfin Update Pending Media`.
 
 This task scans movies, TV episodes, and videos in Jellyfin. It evaluates them against your rules and updates the pending deletion list.
 
 - Newly qualified media is added to the pending list.
 - Media that no longer qualifies is removed from the pending list.
 - The `Removing Soon` collection is updated.
-- Discord grace-period notifications can be sent if enabled.
+- Discord pending deletion summaries can be sent if enabled, including added or removed pending items and a warning for media within 3 days of deletion.
 
 If `Dry run` is enabled, the task reports what would happen but does not change the pending list.
 
-### Delete Due Pending Items
+### Delete Overdue Media
 
-`Delete Due Pending Now` runs the scheduled task `Janitorfin Delete Due Pending Items`.
+`Delete Overdue Media Now` runs the scheduled task `Janitorfin Delete Overdue Media`.
 
 This task does not run a full media scan. It reads the saved pending deletion list and deletes only entries whose saved grace deadline has passed.
 
@@ -121,17 +121,17 @@ When pending deletion is enabled, Janitorfin does not delete matching items imme
 
 - Matching items are added to the pending queue.
 - They remain reviewable for the configured grace period.
-- A later `Scan Pending Deletions` task can remove items from the queue if they no longer match the rules.
-- A later `Delete Due Pending Items` task deletes only items whose saved grace deadline has passed.
+- A later `Update Pending Media` task can remove items from the queue if they no longer match the rules.
+- A later `Delete Overdue Media` task deletes only items whose saved grace deadline has passed.
 
 The grace deadline is saved when an item is first added to the pending list. Changing the grace-days setting affects newly queued items, but it does not automatically rewrite deadlines for items already pending.
 
 ## Installation
 
-### Prerequisites
+### Requirements
 
-- Jellyfin `10.11.6`
-- Plugin target framework `net9.0`
+- Jellyfin `10.11.6` or a compatible `10.11.x` server.
+- Administrator access to the Jellyfin dashboard.
 
 ### Install From Releases
 
@@ -150,22 +150,7 @@ Use this repository manifest URL in Jellyfin to let the server resolve Janitorfi
 2. Refresh repositories.
 3. Install or update Janitorfin from the repository entry instead of relying only on a manual zip install.
 
-The release workflow keeps this manifest updated automatically for future tagged releases.
-
-### Automatic Releases
-
-- Pushes and pull requests run the `CI` workflow automatically.
-- Version tags like `v1.0.3` run the `Release` workflow automatically.
-- The release workflow builds the plugin, packages `Janitorfin.zip`, creates a GitHub Release, and uploads the zip asset.
-- Regular CI runs also upload `Janitorfin.zip` as a workflow artifact for testing before an official release.
-
-### Install From Local Build
-
-1. Build or publish the plugin.
-2. Optionally package it as `Janitorfin.zip` using the workspace task in `.vscode/tasks.json`.
-3. Copy the published output from `artifacts/publish/Janitorfin` into your Jellyfin plugins directory.
-4. Restart Jellyfin.
-5. Open the Janitorfin plugin page from the Jellyfin dashboard.
+The repository manifest is updated as part of Janitorfin releases.
 
 ## Configuration
 
@@ -194,9 +179,10 @@ Use the tabs like this:
 - `Dry run`
   - Reports what Janitorfin would do without changing the pending list, deleting media, or touching monitoring in Radarr or Sonarr.
 - `Pending deletion grace days`
-  - Controls how long newly queued items remain staged before they become eligible for the delete-due task.
-- `Discord grace-period notifications`
-  - Sends a Discord webhook message with media currently waiting in the grace period when the scan task runs.
+  - Controls how long newly queued items remain staged before they become eligible for the overdue media delete task.
+- `Discord pending deletion notifications`
+  - Sends a Discord webhook message after the scan task runs, including the full pending list, items added to pending, items removed from pending, counts for grace/due items, and a warning for media within 3 days of deletion.
+  - Sends a second Discord summary after delete tasks when media is actually deleted.
 - `Home Screen Sections integration`
   - Adds a `Removing Soon` row to the Jellyfin home screen if the Home Screen Sections plugin is installed.
 
@@ -256,7 +242,20 @@ If Home Screen Sections is not installed, Janitorfin still works normally and co
 
 Janitorfin adds grouped activity log entries when media is queued for pending deletion and when media is deleted. TV entries are grouped by the selected TV cleanup scope so the dashboard stays readable.
 
-## Development
+## Known Behavior
+
+- TV cleanup matching only produces candidates when every episode in the chosen season or series scope is eligible.
+- Pending deletion is the safest operating mode and is enabled by default.
+- Sonarr and Radarr updates only run during live delete tasks, not preview or dry run.
+- Janitorfin waits for Jellyfin library scan, refresh, and metadata tasks to finish before running its own scan or delete task.
+- Home Screen Sections integration is optional and non-fatal if the plugin is absent.
+
+## Developer Notes
+
+These sections are only needed if you want to build Janitorfin yourself or help develop the plugin.
+
+<details>
+<summary>Build from source</summary>
 
 ### Build
 
@@ -270,29 +269,40 @@ dotnet build .\Janitorfin.Plugin\Janitorfin.Plugin.csproj -c Release
 dotnet publish .\Janitorfin.Plugin\Janitorfin.Plugin.csproj -c Release -o .\artifacts\publish\Janitorfin
 ```
 
-### Release
+### Install From Local Build
+
+1. Build or publish the plugin.
+2. Optionally package it as `Janitorfin.zip` using the workspace task in `.vscode/tasks.json`.
+3. Copy the published output from `artifacts/publish/Janitorfin` into your Jellyfin plugins directory.
+4. Restart Jellyfin.
+5. Open the Janitorfin plugin page from the Jellyfin dashboard.
+
+</details>
+
+<details>
+<summary>Release process</summary>
 
 1. Update the plugin version in `Janitorfin.Plugin/Janitorfin.Plugin.csproj`.
 2. Commit and push your changes.
-3. Create and push a version tag such as `v1.0.3`.
+3. Create and push a version tag such as `v1.2.0`.
 4. Make sure the git tag matches the plugin project version exactly.
 5. GitHub Actions will create the release, upload `Janitorfin.zip`, and refresh the Jellyfin repository manifest automatically.
 
-### Workspace Notes
+Pushes and pull requests run the `CI` workflow automatically. Regular CI runs also upload `Janitorfin.zip` as a workflow artifact for testing before an official release.
+
+</details>
+
+<details>
+<summary>Workspace notes</summary>
 
 - Solution file: `Janitorfin.slnx`
 - Main plugin project: `Janitorfin.Plugin/Janitorfin.Plugin.csproj`
 - Embedded admin page: `Janitorfin.Plugin/Configuration/configPage.html`
 
-## Known Behavior
+</details>
 
-- TV cleanup matching only produces candidates when every episode in the chosen season or series scope is eligible.
-- Pending deletion is the safest operating mode and is enabled by default.
-- Sonarr and Radarr updates only run during live delete tasks, not preview or dry run.
-- Janitorfin waits for Jellyfin library scan, refresh, and metadata tasks to finish before running its own scan or delete task.
-- Home Screen Sections integration is optional and non-fatal if the plugin is absent.
-
-## Contribution
+<details>
+<summary>Contributing ideas</summary>
 
 Contributions are welcome, especially around:
 
@@ -301,3 +311,5 @@ Contributions are welcome, especially around:
 - Improved review UX
 - More robust test coverage for TV grouping behavior
 - Packaging and release automation
+
+</details>

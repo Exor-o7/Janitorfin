@@ -137,10 +137,12 @@ public class JanitorfinController : ControllerBase
         return RunTask(
             task => task.ScheduledTask is ScanPendingDeletionTask
                 || string.Equals(task.ScheduledTask.Key, "JanitorfinScanPending", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(task.Name, "Janitorfin Update Pending Media", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(task.Name, "Janitorfin Update Pending Deletion List", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(task.Name, "Janitorfin Scan Pending Deletions", StringComparison.OrdinalIgnoreCase),
-            "Janitorfin scan pending task is not available.",
-            "Run scan pending task failed.",
-            "Janitorfin pending scan");
+            "Janitorfin update pending media task is not available.",
+            "Run update pending media task failed.",
+            "Janitorfin update pending media");
     }
 
     [HttpPost("Tasks/DeleteDuePending/Run")]
@@ -149,10 +151,12 @@ public class JanitorfinController : ControllerBase
         return RunTask(
             task => task.ScheduledTask is DeleteDuePendingTask
                 || string.Equals(task.ScheduledTask.Key, "JanitorfinDeleteDuePending", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(task.Name, "Janitorfin Delete Overdue Media", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(task.Name, "Janitorfin Delete Overdue Pending Media", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(task.Name, "Janitorfin Delete Due Pending Items", StringComparison.OrdinalIgnoreCase),
-            "Janitorfin delete due pending task is not available.",
-            "Run delete due pending task failed.",
-            "Janitorfin delete due pending");
+            "Janitorfin delete overdue media task is not available.",
+            "Run delete overdue media task failed.",
+            "Janitorfin delete overdue media");
     }
 
     [HttpPost("Tasks/Cleanup/Run")]
@@ -196,7 +200,7 @@ public class JanitorfinController : ControllerBase
     [HttpGet("Pending")]
     public ActionResult<PendingDeletionSummary> Pending()
     {
-        return _pendingDeletionQueueService.GetSummary(Plugin.Instance!.Configuration, PendingDeletionQueueService.DefaultPendingDetailLimit);
+        return _pendingDeletionQueueService.GetSummary(Plugin.Instance!.Configuration);
     }
 
     [HttpPost("Test/Radarr")]

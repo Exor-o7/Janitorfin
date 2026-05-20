@@ -336,6 +336,7 @@ public sealed class CleanupExecutionService
         if (!dryRun)
         {
             await _activityLogService.LogDeletedAsync(configuration, deletedCandidates).ConfigureAwait(false);
+            await NotifyDiscordDeletedItemsAsync(configuration, deletedCandidates, cancellationToken).ConfigureAwait(false);
 
             try
             {
@@ -349,7 +350,7 @@ public sealed class CleanupExecutionService
 
         if (!dryRun && configuration.EnablePendingDeletion)
         {
-            await NotifyDiscordGracePeriodItemsAsync(configuration, now, cancellationToken).ConfigureAwait(false);
+            await NotifyDiscordGracePeriodItemsAsync(configuration, Array.Empty<PendingDeletionEntry>(), Array.Empty<PendingDeletionEntry>(), now, cancellationToken).ConfigureAwait(false);
         }
 
         return new CleanupExecutionSummary
@@ -385,9 +386,11 @@ public sealed class CleanupExecutionService
         var resultCount = 0;
         var queuedCount = 0;
         var pendingCount = 0;
+        var addedPendingEntries = Array.Empty<PendingDeletionEntry>();
+        var removedPendingEntries = Array.Empty<PendingDeletionEntry>();
         var existingPendingIds = configuration.EnablePendingDeletion
-            ? _pendingDeletionQueueService.GetEntriesByItemId().Keys.ToHashSet()
-            : [];
+            ? _pendingDeletionQueueService.GetEntriesByItemId()
+            : new Dictionary<Guid, PendingDeletionEntry>();
 
         if (!dryRun && configuration.EnablePendingDeletion)
         {
@@ -400,9 +403,21 @@ public sealed class CleanupExecutionService
 
         if (!dryRun && configuration.EnablePendingDeletion)
         {
+            addedPendingEntries = pendingEntriesById
+                .Where(pair => !existingPendingIds.ContainsKey(pair.Key))
+                .Select(pair => pair.Value)
+                .ToArray();
+            removedPendingEntries = existingPendingIds
+                .Where(pair => !pendingEntriesById.ContainsKey(pair.Key))
+                .Select(pair => pair.Value)
+                .ToArray();
+        }
+
+        if (!dryRun && configuration.EnablePendingDeletion)
+        {
             var queuedCandidates = evaluation.Candidates
                 .Where(candidate =>
-                    !existingPendingIds.Contains(candidate.ItemId)
+                    !existingPendingIds.ContainsKey(candidate.ItemId)
                     && pendingEntriesById.TryGetValue(candidate.ItemId, out var pendingEntry)
                     && pendingEntry.DeleteAfterUtc > now)
                 .ToArray();
@@ -460,7 +475,7 @@ public sealed class CleanupExecutionService
 
         if (!dryRun && configuration.EnablePendingDeletion)
         {
-            await NotifyDiscordGracePeriodItemsAsync(configuration, now, cancellationToken).ConfigureAwait(false);
+            await NotifyDiscordGracePeriodItemsAsync(configuration, addedPendingEntries, removedPendingEntries, now, cancellationToken).ConfigureAwait(false);
         }
 
         return new CleanupExecutionSummary
@@ -705,6 +720,7 @@ public sealed class CleanupExecutionService
         if (!dryRun)
         {
             await _activityLogService.LogDeletedAsync(configuration, deletedCandidates).ConfigureAwait(false);
+            await NotifyDiscordDeletedItemsAsync(configuration, deletedCandidates, cancellationToken).ConfigureAwait(false);
 
             try
             {
@@ -909,7 +925,12 @@ public sealed class CleanupExecutionService
         return string.Join(" - ", parts);
     }
 
-    private async Task NotifyDiscordGracePeriodItemsAsync(PluginConfiguration configuration, DateTime now, CancellationToken cancellationToken)
+    private async Task NotifyDiscordGracePeriodItemsAsync(
+        PluginConfiguration configuration,
+        IReadOnlyList<PendingDeletionEntry> addedEntries,
+        IReadOnlyList<PendingDeletionEntry> removedEntries,
+        DateTime now,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -918,12 +939,29 @@ public sealed class CleanupExecutionService
             await _discordNotificationService.NotifyGracePeriodItemsAsync(
                 configuration,
                 pendingEntries,
+                addedEntries,
+                removedEntries,
                 now,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Janitorfin Discord grace-period notification failed.");
+        }
+    }
+
+    private async Task NotifyDiscordDeletedItemsAsync(PluginConfiguration configuration, IReadOnlyList<CleanupCandidate> deletedCandidates, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _discordNotificationService.NotifyDeletedItemsAsync(
+                configuration,
+                deletedCandidates,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Janitorfin Discord deleted-media notification failed.");
         }
     }
 

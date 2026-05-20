@@ -18,13 +18,19 @@ public interface IDiscordNotificationService
     Task NotifyGracePeriodItemsAsync(
         PluginConfiguration configuration,
         IReadOnlyList<PendingDeletionEntry> entries,
+        IReadOnlyList<PendingDeletionEntry> addedEntries,
+        IReadOnlyList<PendingDeletionEntry> removedEntries,
         DateTime nowUtc,
+        CancellationToken cancellationToken);
+
+    Task NotifyDeletedItemsAsync(
+        PluginConfiguration configuration,
+        IReadOnlyList<CleanupCandidate> candidates,
         CancellationToken cancellationToken);
 }
 
 internal sealed class DiscordNotificationService : IDiscordNotificationService
 {
-    private const int MaxDetailItems = 25;
     private const int MaxMessageLength = 1900;
 
     private readonly ILogger<DiscordNotificationService> _logger;
@@ -37,32 +43,60 @@ internal sealed class DiscordNotificationService : IDiscordNotificationService
     public async Task NotifyGracePeriodItemsAsync(
         PluginConfiguration configuration,
         IReadOnlyList<PendingDeletionEntry> entries,
+        IReadOnlyList<PendingDeletionEntry> addedEntries,
+        IReadOnlyList<PendingDeletionEntry> removedEntries,
         DateTime nowUtc,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(entries);
+        ArgumentNullException.ThrowIfNull(addedEntries);
+        ArgumentNullException.ThrowIfNull(removedEntries);
 
-        if (!configuration.EnableDiscordGracePeriodNotifications)
-        {
-            return;
-        }
-
-        if (!TryBuildWebhookUri(configuration.DiscordWebhookUrl, out var webhookUri, out var error))
-        {
-            _logger.LogWarning("Discord grace-period notification skipped: {Error}", error);
-            return;
-        }
-
-        var graceEntries = entries
-            .Where(entry => entry.DeleteAfterUtc > nowUtc)
+        var pendingEntries = entries
             .OrderBy(entry => entry.DeleteAfterUtc)
             .ThenBy(entry => entry.LibraryName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(entry => entry.SeriesName ?? entry.ItemName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(entry => entry.ItemName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        var message = BuildMessage(graceEntries, nowUtc);
+        var messages = BuildPendingMessages(pendingEntries, addedEntries, removedEntries, nowUtc);
+        await SendMessagesAsync(configuration, messages, "Discord pending deletion notification", cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task NotifyDeletedItemsAsync(
+        PluginConfiguration configuration,
+        IReadOnlyList<CleanupCandidate> candidates,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(candidates);
+
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        var messages = BuildDeletedMessages(candidates);
+        await SendMessagesAsync(configuration, messages, "Discord deleted media notification", cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SendMessagesAsync(
+        PluginConfiguration configuration,
+        IReadOnlyList<string> messages,
+        string logContext,
+        CancellationToken cancellationToken)
+    {
+        if (!configuration.EnableDiscordGracePeriodNotifications || messages.Count == 0)
+        {
+            return;
+        }
+
+        if (!TryBuildWebhookUri(configuration.DiscordWebhookUrl, out var webhookUri, out var error))
+        {
+            _logger.LogWarning("{LogContext} skipped: {Error}", logContext, error);
+            return;
+        }
 
         try
         {
@@ -71,90 +105,200 @@ internal sealed class DiscordNotificationService : IDiscordNotificationService
                 Timeout = TimeSpan.FromSeconds(20),
             };
 
-            using var response = await client.PostAsJsonAsync(
-                webhookUri,
-                new DiscordWebhookPayload
-                {
-                    Content = message,
-                    AllowedMentions = new DiscordAllowedMentions(),
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
+            foreach (var message in messages)
             {
-                _logger.LogWarning(
-                    "Discord grace-period notification failed with HTTP {StatusCode}",
-                    (int)response.StatusCode);
+                using var response = await client.PostAsJsonAsync(
+                    webhookUri,
+                    new DiscordWebhookPayload
+                    {
+                        Content = message,
+                        AllowedMentions = new DiscordAllowedMentions(),
+                    },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning(
+                        "{LogContext} failed with HTTP {StatusCode}",
+                        logContext,
+                        (int)response.StatusCode);
+                }
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex, "Discord grace-period notification failed.");
+            _logger.LogWarning(ex, "{LogContext} failed.", logContext);
         }
     }
 
-    private static string BuildMessage(IReadOnlyList<PendingDeletionEntry> entries, DateTime nowUtc)
+    private static IReadOnlyList<string> BuildPendingMessages(
+        IReadOnlyList<PendingDeletionEntry> entries,
+        IReadOnlyList<PendingDeletionEntry> addedEntries,
+        IReadOnlyList<PendingDeletionEntry> removedEntries,
+        DateTime nowUtc)
     {
         if (entries.Count == 0)
         {
-            return "**Janitorfin grace-period scan complete**\nNo media is currently in the pending deletion grace period.";
+            if (removedEntries.Count == 0)
+            {
+                return ["**Janitorfin pending deletion scan complete**\nNo media is currently in the pending deletion list."];
+            }
         }
 
+        var graceCount = entries.Count(entry => entry.DeleteAfterUtc > nowUtc);
+        var dueCount = entries.Count - graceCount;
+        var endingSoonEntries = entries
+            .Where(entry => entry.DeleteAfterUtc > nowUtc && entry.DeleteAfterUtc <= nowUtc.AddDays(3))
+            .ToArray();
+        var endingSoonCount = endingSoonEntries.Length;
         var header = string.Format(
             CultureInfo.InvariantCulture,
-            "**Janitorfin grace-period scan complete**\n{0} media item{1} currently in the pending deletion grace period.",
+            "**Janitorfin pending deletion scan complete**\n{0} media item{1} in the pending deletion list. {2} added, {3} removed, {4} in grace period, {5} due or overdue.",
             entries.Count,
-            entries.Count == 1 ? " is" : "s are");
+            entries.Count == 1 ? " is" : "s are",
+            addedEntries.Count,
+            removedEntries.Count,
+            graceCount,
+            dueCount);
+        if (endingSoonCount > 0)
+        {
+            header += string.Format(
+                CultureInfo.InvariantCulture,
+                "\n{0} media item{1} within 3 days of deletion. Watch or favorite anything you want to keep.",
+                endingSoonCount,
+                endingSoonCount == 1 ? " is" : "s are");
+        }
+
+        var messages = new List<string>();
         var builder = new StringBuilder(header);
 
-        var displayLines = BuildDisplayLines(entries).ToArray();
-        foreach (var line in displayLines.Take(MaxDetailItems))
+        AppendSection("Added to pending", BuildDisplayLines(addedEntries, "Added"));
+        AppendSection("Full pending list", BuildDisplayLines(entries));
+        AppendSection("Within 3 days of deletion", BuildDisplayLines(endingSoonEntries, "3 days or less"));
+        AppendSection("Removed from pending", BuildDisplayLines(removedEntries, "Removed"));
+
+        if (messages.Count > 0)
+        {
+            var footer = string.Format(
+                CultureInfo.InvariantCulture,
+                "\nEnd of pending deletion scan. {0} grouped pending line{1} shown.",
+                BuildDisplayLines(entries).Count(),
+                BuildDisplayLines(entries).Count() == 1 ? string.Empty : "s");
+            if (builder.Length + footer.Length <= MaxMessageLength)
+            {
+                builder.Append(footer);
+            }
+        }
+
+        messages.Add(builder.ToString());
+        return messages;
+
+        void AppendSection(string title, IEnumerable<string> lines)
+        {
+            var lineArray = lines.ToArray();
+            if (lineArray.Length == 0)
+            {
+                return;
+            }
+
+            AppendLine(string.Empty);
+            AppendLine("**" + title + "**");
+            foreach (var line in lineArray)
+            {
+                AppendLine(line);
+            }
+        }
+
+        void AppendLine(string line)
         {
             if (builder.Length + line.Length + 1 > MaxMessageLength)
             {
-                break;
+                messages.Add(builder.ToString());
+                builder.Clear();
+                builder.Append("**Janitorfin pending deletion scan continued**");
+            }
+
+            builder.AppendLine();
+            builder.Append(line);
+        }
+    }
+
+    private static IReadOnlyList<string> BuildDeletedMessages(IReadOnlyList<CleanupCandidate> candidates)
+    {
+        var header = string.Format(
+            CultureInfo.InvariantCulture,
+            "**Janitorfin deleted media**\n{0} media item{1} deleted.",
+            candidates.Count,
+            candidates.Count == 1 ? " was" : "s were");
+        var messages = new List<string>();
+        var displayLines = BuildDeletedDisplayLines(candidates).ToArray();
+        var builder = new StringBuilder(header);
+
+        foreach (var line in displayLines)
+        {
+            if (builder.Length + line.Length + 1 > MaxMessageLength)
+            {
+                messages.Add(builder.ToString());
+                builder.Clear();
+                builder.Append("**Janitorfin deleted media continued**");
             }
 
             builder.AppendLine();
             builder.Append(line);
         }
 
-        var hiddenCount = displayLines.Length - Math.Min(displayLines.Length, MaxDetailItems);
-        if (hiddenCount > 0)
+        if (messages.Count > 0)
         {
-            var overflowLine = string.Format(
+            var footer = string.Format(
                 CultureInfo.InvariantCulture,
-                "\n...and {0} more grouped line{1}. Open Janitorfin pending deletions for the full list.",
-                hiddenCount,
-                hiddenCount == 1 ? string.Empty : "s");
-
-            if (builder.Length + overflowLine.Length <= MaxMessageLength)
+                "\nEnd of deleted media list. {0} grouped line{1} shown.",
+                displayLines.Length,
+                displayLines.Length == 1 ? string.Empty : "s");
+            if (builder.Length + footer.Length <= MaxMessageLength)
             {
-                builder.Append(overflowLine);
+                builder.Append(footer);
             }
         }
 
-        return builder.ToString();
+        messages.Add(builder.ToString());
+        return messages;
     }
 
-    private static IEnumerable<string> BuildDisplayLines(IReadOnlyList<PendingDeletionEntry> entries)
+    private static IEnumerable<string> BuildDisplayLines(IReadOnlyList<PendingDeletionEntry> entries, string? suffix = null)
     {
         var tvLines = entries
             .Where(entry => string.Equals(entry.ItemType, "Episode", StringComparison.OrdinalIgnoreCase))
             .GroupBy(entry => new SeriesGroupKey(
                 string.IsNullOrWhiteSpace(entry.SeriesName) ? entry.ItemName : entry.SeriesName!,
                 entry.ProductionYear))
-            .Select(group => FormatSeriesLine(group.Key, group))
+            .Select(group => FormatSeriesLine(group.Key, group, suffix))
             .OrderBy(line => line, StringComparer.OrdinalIgnoreCase);
         var movieLines = entries
             .Where(entry => !string.Equals(entry.ItemType, "Episode", StringComparison.OrdinalIgnoreCase))
-            .Select(FormatMovieLine)
+            .Select(entry => FormatMovieLine(entry, suffix))
             .OrderBy(line => line, StringComparer.OrdinalIgnoreCase);
 
         return tvLines.Concat(movieLines);
     }
 
-    private static string FormatSeriesLine(SeriesGroupKey key, IEnumerable<PendingDeletionEntry> entries)
+    private static IEnumerable<string> BuildDeletedDisplayLines(IReadOnlyList<CleanupCandidate> candidates)
+    {
+        var tvLines = candidates
+            .Where(candidate => string.Equals(candidate.ItemType, "Episode", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(candidate => new SeriesGroupKey(
+                string.IsNullOrWhiteSpace(candidate.SeriesName) ? candidate.ItemName : candidate.SeriesName!,
+                candidate.ProductionYear))
+            .Select(group => FormatDeletedSeriesLine(group.Key, group))
+            .OrderBy(line => line, StringComparer.OrdinalIgnoreCase);
+        var movieLines = candidates
+            .Where(candidate => !string.Equals(candidate.ItemType, "Episode", StringComparison.OrdinalIgnoreCase))
+            .Select(FormatDeletedMovieLine)
+            .OrderBy(line => line, StringComparer.OrdinalIgnoreCase);
+
+        return tvLines.Concat(movieLines);
+    }
+
+    private static string FormatSeriesLine(SeriesGroupKey key, IEnumerable<PendingDeletionEntry> entries, string? suffix)
     {
         var seasons = entries
             .Select(entry => entry.SeasonNumber)
@@ -167,19 +311,52 @@ internal sealed class DiscordNotificationService : IDiscordNotificationService
             ? "Unknown season"
             : "Season " + string.Join(",", seasons.Select(season => season.ToString(CultureInfo.InvariantCulture)));
 
+        return TrimLine("- TV: " + FormatTitle(key.Title, key.Year) + " - " + seasonText + FormatSuffix(suffix));
+    }
+
+    private static string FormatMovieLine(PendingDeletionEntry entry, string? suffix)
+    {
+        return TrimLine("- " + FormatTitle(entry.ItemName, entry.ProductionYear) + FormatSuffix(suffix));
+    }
+
+    private static string FormatDeletedSeriesLine(SeriesGroupKey key, IEnumerable<CleanupCandidate> candidates)
+    {
+        var seasons = candidates
+            .Select(candidate => candidate.SeasonNumber)
+            .Where(seasonNumber => seasonNumber.HasValue)
+            .Select(seasonNumber => seasonNumber!.Value)
+            .Distinct()
+            .Order()
+            .ToArray();
+        var seasonText = seasons.Length == 0
+            ? "Unknown season"
+            : "Season " + string.Join(",", seasons.Select(season => season.ToString(CultureInfo.InvariantCulture)));
+
         return TrimLine("- " + FormatTitle(key.Title, key.Year) + " - (" + seasonText + ")");
     }
 
-    private static string FormatMovieLine(PendingDeletionEntry entry)
+    private static string FormatDeletedMovieLine(CleanupCandidate candidate)
     {
-        return TrimLine("- " + FormatTitle(entry.ItemName, entry.ProductionYear));
+        return TrimLine("- " + FormatTitle(candidate.ItemName, candidate.ProductionYear));
+    }
+
+    private static string FormatSuffix(string? suffix)
+    {
+        return string.IsNullOrWhiteSpace(suffix) ? string.Empty : " - " + suffix;
     }
 
     private static string FormatTitle(string title, int? year)
     {
-        return year.HasValue && year.Value > 0
-            ? string.Format(CultureInfo.InvariantCulture, "{0} ({1})", title, year.Value)
-            : title;
+        var normalizedTitle = title.Trim();
+        if (!year.HasValue || year.Value <= 0)
+        {
+            return normalizedTitle;
+        }
+
+        var yearSuffix = string.Format(CultureInfo.InvariantCulture, "({0})", year.Value);
+        return normalizedTitle.EndsWith(yearSuffix, StringComparison.OrdinalIgnoreCase)
+            ? normalizedTitle
+            : string.Format(CultureInfo.InvariantCulture, "{0} ({1})", normalizedTitle, year.Value);
     }
 
     private static string TrimLine(string line)
