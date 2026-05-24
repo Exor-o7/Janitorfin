@@ -46,7 +46,7 @@ The plugin is intentionally closer to a Jellyfin-first equivalent of the cleanup
 - Pending deletion queue with configurable grace period
 - Review surface via the Jellyfin collection `Removing Soon`
 - Optional integration with Home Screen Sections for a `Removing Soon` row
-- Optional Discord notifications for pending deletion and deleted-media summaries
+- Optional Discord dashboard cards for pending deletion status and deleted-media summaries
 - Optional Jellystat integration for more complete watch-history detection
 - Separate scheduled tasks for scanning media and deleting overdue pending items
 - Radarr unmonitor support for movies deleted by Janitorfin
@@ -85,7 +85,7 @@ This task scans movies, TV episodes, and videos in Jellyfin. It evaluates them a
 - Newly qualified media is added to the pending list.
 - Media that no longer qualifies is removed from the pending list.
 - The `Removing Soon` collection is updated.
-- Discord pending deletion summaries can be sent if enabled, including added or removed pending items and a warning for media within 3 days of deletion.
+- Discord dashboard cards can be updated if enabled, including added or removed pending items and a warning for media within 3 days of deletion.
 
 If `Dry run` is enabled, the task reports what would happen but does not change the pending list.
 
@@ -181,8 +181,8 @@ Use the tabs like this:
 - `Pending deletion grace days`
   - Controls how long newly queued items remain staged before they become eligible for the overdue media delete task.
 - `Discord pending deletion notifications`
-  - Sends a Discord webhook message after the scan task runs, including the full pending list, items added to pending, items removed from pending, counts for grace/due items, and a warning for media within 3 days of deletion.
-  - Sends a second Discord summary after delete tasks when media is actually deleted.
+  - Maintains Discord dashboard cards for status, added pending items, removed pending items, pending movies, pending TV, and latest deleted media.
+  - Future scans and delete tasks update those cards instead of posting a new dashboard every time.
 - `Home Screen Sections integration`
   - Adds a `Removing Soon` row to the Jellyfin home screen if the Home Screen Sections plugin is installed.
 
