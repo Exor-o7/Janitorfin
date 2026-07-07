@@ -89,7 +89,7 @@ public sealed class CleanupEvaluationService
         }
 
         var items = _libraryManager.GetItemList(query);
-        var users = _userManager.Users.ToArray();
+        var users = GetUsers();
         var now = DateTime.UtcNow;
         var pendingEntriesById = _pendingDeletionQueueService.GetEntriesByItemId();
         var jellystatPlayback = await _jellystatClient.GetPlaybackSnapshotAsync(configuration, cancellationToken).ConfigureAwait(false);
@@ -214,6 +214,25 @@ public sealed class CleanupEvaluationService
         }
 
         return false;
+    }
+
+    private User[] GetUsers()
+    {
+        var userIdsProperty = _userManager.GetType().GetProperty("UsersIds")
+            ?? _userManager.GetType().GetProperty("UserIds");
+        if (userIdsProperty?.GetValue(_userManager) is IEnumerable<Guid> userIds)
+        {
+            return userIds
+                .Select(_userManager.GetUserById)
+                .Where(static user => user is not null)
+                .Select(static user => user!)
+                .ToArray();
+        }
+
+        var usersProperty = _userManager.GetType().GetProperty("Users");
+        return usersProperty?.GetValue(_userManager) is IEnumerable<User> users
+            ? users.ToArray()
+            : [];
     }
 
     private static string GetEpisodeCleanupGroupKey(Episode episode, TvCleanupScope scope)
