@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Database.Implementations.Entities;
 using Janitorfin.Plugin.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
@@ -732,6 +733,11 @@ public sealed class CleanupExecutionService
             }
         }
 
+        if (!dryRun && configuration.EnablePendingDeletion)
+        {
+            await NotifyDiscordGracePeriodItemsAsync(configuration, Array.Empty<PendingDeletionEntry>(), Array.Empty<PendingDeletionEntry>(), now, cancellationToken).ConfigureAwait(false);
+        }
+
         return new CleanupExecutionSummary
         {
             DryRun = dryRun,
@@ -874,7 +880,7 @@ public sealed class CleanupExecutionService
 
         if (configuration.KeepFavorites)
         {
-            foreach (var user in _userManager.Users)
+            foreach (var user in GetUsers())
             {
                 var userData = _userDataManager.GetUserData(user, item);
                 if (userData?.IsFavorite == true)
@@ -887,6 +893,25 @@ public sealed class CleanupExecutionService
 
         reason = string.Empty;
         return false;
+    }
+
+    private User[] GetUsers()
+    {
+        var userIdsProperty = _userManager.GetType().GetProperty("UsersIds")
+            ?? _userManager.GetType().GetProperty("UserIds");
+        if (userIdsProperty?.GetValue(_userManager) is IEnumerable<Guid> userIds)
+        {
+            return userIds
+                .Select(_userManager.GetUserById)
+                .Where(static user => user is not null)
+                .Select(static user => user!)
+                .ToArray();
+        }
+
+        var usersProperty = _userManager.GetType().GetProperty("Users");
+        return usersProperty?.GetValue(_userManager) is IEnumerable<User> users
+            ? users.ToArray()
+            : [];
     }
 
     private static string GetItemType(BaseItem item)
